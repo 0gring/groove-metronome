@@ -1,0 +1,157 @@
+{
+ "drums": {
+  "hhc-soft": "drums/hhc-soft.flac",
+  "hhc-1": "drums/hhc-1.flac",
+  "hhc-2": "drums/hhc-2.flac",
+  "hhc-hard": "drums/hhc-hard.flac",
+  "hho": "drums/hho.flac",
+  "snare-ghost": "drums/snare-ghost.flac",
+  "snare-1": "drums/snare-1.flac",
+  "snare-2": "drums/snare-2.flac",
+  "snare-hard": "drums/snare-hard.flac",
+  "rim-1": "drums/rim-1.flac",
+  "rim-2": "drums/rim-2.flac",
+  "clap-1": "drums/clap-1.flac",
+  "clap-2": "drums/clap-2.flac",
+  "tamb-soft": "drums/tamb-soft.flac",
+  "tamb-hard": "drums/tamb-hard.flac",
+  "tamb-shake": "drums/tamb-shake.flac",
+  "shaker-down": "drums/shaker-down.flac",
+  "shaker-up": "drums/shaker-up.flac",
+  "clave": "drums/clave.flac",
+  "cowbell": "drums/cowbell.flac",
+  "conga": "drums/conga.flac",
+  "tomH": "drums/tomH.flac",
+  "tomL": "drums/tomL.flac",
+  "crash": "drums/crash.flac",
+  "ride": "drums/ride.flac"
+ },
+ "ep": [
+  [
+   36,
+   36.009
+  ],
+  [
+   40,
+   40.014
+  ],
+  [
+   44,
+   44.012
+  ],
+  [
+   48,
+   48.044
+  ],
+  [
+   52,
+   52.014
+  ],
+  [
+   56,
+   56.012
+  ],
+  [
+   60,
+   60.044
+  ],
+  [
+   64,
+   64.014
+  ],
+  [
+   68,
+   68.012
+  ],
+  [
+   72,
+   72.044
+  ],
+  [
+   76,
+   75.837
+  ],
+  [
+   80,
+   79.788
+  ]
+ ],
+ "piano": [
+  [
+   48,
+   48.044
+  ],
+  [
+   50,
+   49.995
+  ],
+  [
+   52,
+   51.925
+  ],
+  [
+   54,
+   53.998
+  ],
+  [
+   56,
+   56.012
+  ],
+  [
+   58,
+   58.037
+  ],
+  [
+   60,
+   60.044
+  ],
+  [
+   62,
+   61.995
+  ],
+  [
+   64,
+   64.014
+  ],
+  [
+   66,
+   65.898
+  ],
+  [
+   68,
+   68.012
+  ],
+  [
+   70,
+   70.164
+  ],
+  [
+   72,
+   72.044
+  ],
+  [
+   74,
+   74.154
+  ],
+  [
+   76,
+   76.194
+  ],
+  [
+   78,
+   78.098
+  ],
+  [
+   80,
+   80.238
+  ],
+  [
+   82,
+   82.164
+  ],
+  [
+   84,
+   83.763
+  ]
+ ]
+}

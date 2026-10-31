@@ -19,6 +19,7 @@ const LAYERS = [
 ];
 const HIT_NAMES = { '.': 'off', x: 'hit', X: 'accent', g: 'ghost', o: 'soft', r: 'roll', t: 'triplet roll' };
 const CYCLE = { '.': 'x', x: 'X', X: 'g', g: '.' };
+const FILL_SKIP = new Set(['snare', 'rim', 'clap', 'tomH', 'tomL', 'hho', 'crash']);
 const DRUM_SETS = { full: null, ks: ['kick', 'snare', 'rim', 'clap'], k: ['kick'] };
 const STRINGS = { 4: { open: [43, 38, 33, 28], names: ['G', 'D', 'A', 'E'] }, 5: { open: [43, 38, 33, 28, 23], names: ['G', 'D', 'A', 'E', 'B'] } };
 const IV_NAMES = ['R', '♭2', '2', '♭3', '3', '4', '♭5', '5', '♭6', '6', '♭7', '7'];
@@ -65,6 +66,8 @@ const DEFAULTS = {
   drumMode: 'full',
   bassStyle: 'orig',
   bassFeel: 0,
+  variation: '0',
+  fills: 0,
   prog: 'default',
   strings: 4,
   fbMode: 'chord',
@@ -136,10 +139,19 @@ function buildGroove(def) {
     sounds: { bass: def.bassSound ?? 'electric', chords: def.chordSound ?? 'epiano', melody: def.melodySound ?? 'square' },
   };
   g.spb = g.beats * g.sub;
-  for (const [name, str] of Object.entries(def.drums)) {
-    g.drumStr[name] = expandDrum(str, k);
-    g.drums[name] = parseDrum(g.drumStr[name]);
-  }
+  // drum sets: A (main) plus each variation (lanes overridden, null removes a lane)
+  g.sets = [def.drums, ...(def.vars ?? []).map((v) => ({ ...def.drums, ...v.drums }))].map((lanes) => {
+    const set = { drumStr: {}, drums: {} };
+    for (const [name, str] of Object.entries(lanes)) {
+      if (str === null) continue;
+      set.drumStr[name] = expandDrum(str, k);
+      set.drums[name] = parseDrum(set.drumStr[name]);
+    }
+    return set;
+  });
+  const vi = state.variation === 'mix' ? 0 : Math.min(Number(state.variation) || 0, g.sets.length - 1);
+  g.drumStr = g.sets[vi].drumStr;
+  g.drums = g.sets[vi].drums;
   g.bass = makeBass(g);
   g.comp = def.chords ? parseComp(expandLine(def.chords, k)) : null;
   g.melody = def.melody ? parseLine(expandLine(def.melody, k)) : g.basic ? null : parseLine(generateMelody(g));
@@ -161,6 +173,7 @@ function adaptForPiece(g) {
   } else if (!def.basic) {
     g.drumStr = {};
     g.drums = {};
+    g.sets = [{ drumStr: g.drumStr, drums: g.drums }];
     g.sub = piece.beatType >= 8 ? 2 : 4;
     g.accentBeats = piece.beats === 6 && piece.beatType === 8 ? [0, 3] : [0];
   }
@@ -298,8 +311,23 @@ function scheduleStep(bar, s, t) {
 
   if (L.drums.on) {
     const only = DRUM_SETS[state.drumMode];
-    for (const [name, arr] of Object.entries(g.drums)) {
+    // Mix: a variation on every 4th bar (cycling B, C, ...)
+    const drums = state.variation === 'mix' && g.sets.length > 1 && bar % 4 === 3
+      ? g.sets[1 + (Math.floor(bar / 4) % (g.sets.length - 1))].drums
+      : g.drums;
+    // Fills: last beat (or two, every 8 bars) of the phrase; crash on the next downbeat
+    const fillsOn = state.fills && !g.basic && !g.piece && state.drumMode === 'full';
+    const fillLen = state.fills === 8 ? Math.min(2, g.beats) * g.sub : g.sub;
+    const inFill = fillsOn && (bar + 1) % state.fills === 0 && s >= g.spb - fillLen;
+    if (inFill) {
+      const k = s - (g.spb - fillLen);
+      const f = k / fillLen;
+      audio.drum(f < 0.5 ? 'snare' : f < 0.75 ? 'tomH' : 'tomL', at(tt), 0.55 + 0.45 * f);
+    }
+    if (fillsOn && bar > 0 && s === 0 && bar % state.fills === 0 && !drums.crash) audio.drum('crash', tt, 0.9);
+    for (const [name, arr] of Object.entries(drums)) {
       if (only && !only.includes(name)) continue;
+      if (inFill && FILL_SKIP.has(name)) continue;
       const h = arr[abs % arr.length];
       if (!h) continue;
       if (h.n === 1) audio.drum(name, at(tt), vj(h.v));
@@ -354,6 +382,7 @@ function scheduleStep(bar, s, t) {
 
 async function start() {
   audio.init();
+  audio.loadSamples(); // recorded drums & keys load in the background; synth sounds play until then
   applyMix();
   const resumed = audio.resume();
   await resumed;
@@ -481,6 +510,16 @@ function renderGroove() {
   $('grooveSelect').value = g.def.id;
   $('grooveDesc').textContent = g.def.desc;
   $('basicControls').hidden = !g.basic;
+  const vars = g.def.vars ?? [];
+  $('varControls').hidden = g.basic || !vars.length;
+  const vs = $('varSelect');
+  vs.replaceChildren(
+    new Option('A – Main', '0'),
+    ...vars.map((v, i) => new Option(`${String.fromCharCode(66 + i)} – ${v.name}`, String(i + 1))),
+    new Option('🔀 Mix (A A A B)', 'mix'),
+  );
+  vs.value = state.variation === 'mix' || Number(state.variation) <= vars.length ? String(state.variation) : '0';
+  $('fillSelect').value = String(state.fills);
   $('bpmUnit').textContent = g.def.beatUnit ? `BPM (${g.def.beatUnit})` : 'BPM';
 
   const beats = $('beats');
@@ -978,6 +1017,7 @@ function selectGroove(id) {
   state.grooveId = id;
   const def = grooveDef(id);
   state.swing = null;
+  state.variation = '0';
   if (!piece) setBpm(def.bpm);
   rebuild();
 }
@@ -1126,6 +1166,16 @@ function init() {
     cur.melody = parseLine(cur.def.melody);
     turnOnMelody();
     renderGrid();
+  };
+
+  // variations & fills
+  $('varSelect').onchange = (e) => {
+    state.variation = e.target.value;
+    rebuild();
+  };
+  $('fillSelect').onchange = (e) => {
+    state.fills = Number(e.target.value);
+    save();
   };
 
   // bass player

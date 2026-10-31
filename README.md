@@ -2,21 +2,31 @@
 
 A metronome that plays **real grooves** — drums, bass, chords and rhythmic melodies — instead of just a click.
 It's an installable web app (PWA): it runs in any modern browser, installs on Android like a native app,
-and works offline. Every sound is synthesized live with the Web Audio API (no samples, ~60 KB total).
+and works offline.
 
-## Grooves (23)
+**Sound:** recorded drums, percussion, electric piano and grand piano from the
+[Versilian Community Sample Library](https://github.com/sgossner/VCSL) (CC0), with velocity layers and
+round-robin; finger bass, upright bass and guitar from a Karplus-Strong plucked-string model; synthesized kick,
+synth bass, 808, organ, pad and leads. Mixed in stereo with room reverb and a soft limiter (~3 MB of samples).
+
+## Grooves (26, each with 3 variations)
 
 | Style | Grooves |
 |---|---|
 | Basic | Click-only metronome (1–12 beats, quarter/eighth/triplet/16th subdivisions) |
 | Rock & Pop | Rock, Pop (I–V–vi–IV), Metal double-kick |
-| Funk & Soul | Funk 16ths, Motown, Disco, Neo-Soul |
+| Funk & Soul | Funk 16ths, Disco, Neo-Soul |
+| Motown | Backbeat (snare on all four), Four-on-the-Floor, Shuffle, Ballad — with tambourine |
 | Hip-Hop & Electronic | Boom Bap, Trap, House, Drum & Bass |
 | Latin & Caribbean | Bossa Nova, Samba, Salsa (2-3 son clave), Reggae One Drop |
 | African | Afrobeat |
 | Jazz & Blues | Jazz Swing (walking bass, ii–V–I), 12-bar Blues Shuffle |
 | Ballads & 3s | 6/8 Ballad, Waltz 3/4 |
 | Odd Meters | 5/4 (3+2), 7/8 (2+2+3) |
+
+Every groove has a main pattern (A) and two variations (B, C), e.g. Rock *Push* / *Ride*, Funk *16th hats* /
+*Open hats*, Bossa *2-3 clave* / *Ride*, Reggae *Steppers* / *Rockers*. **Mix** plays A A A B, A A A C…, and
+**Fills** adds a snare-to-toms fill at the end of every 4 or 8 bars with a crash on the next downbeat.
 
 ## Features
 
@@ -111,6 +121,7 @@ python3 -m http.server 8000   # then open http://localhost:8000
 node tests/grooves.test.mjs   # validate groove data & theory helpers
 node tests/tuner.test.mjs     # pitch detector accuracy on synthetic bass notes
 node tests/importers.test.mjs # ASCII tab parser and .mxl unzip (sample files in tests/fixtures/)
+node tests/audio.test.mjs     # plucked-string bass/guitar tuning
 ```
 
 ## Adding a groove
@@ -126,7 +137,8 @@ Run `node tests/grooves.test.mjs` to check the lengths line up.
 index.html            UI markup
 css/style.css         styles (mobile-first)
 js/app.js             scheduler, UI, practice tools
-js/audio.js           synthesized drum kit and instruments
+js/audio.js           audio engine: samples, plucked strings, synths, reverb/limiter
+samples/              CC0 recorded drums, e-piano, piano (VCSL) + manifest
 js/grooves.js         groove library
 js/theory.js          pattern parsers, chord theory, melody & bass line generators
 js/tuner.js           microphone pitch detection for the tuner

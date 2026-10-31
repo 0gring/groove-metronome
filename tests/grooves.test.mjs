@@ -13,6 +13,14 @@ for (const g of GROOVES) {
     assert.ok(DRUM_ORDER.includes(k), `${g.id}: unknown drum ${k}`);
     check(k, parseDrum(s).length);
   }
+  for (const v of g.vars ?? []) {
+    assert.ok(v.name, `${g.id}: variation needs a name`);
+    for (const [k, str] of Object.entries(v.drums)) {
+      assert.ok(DRUM_ORDER.includes(k), `${g.id}/${v.name}: unknown drum ${k}`);
+      if (str !== null) check(`${v.name}/${k}`, parseDrum(str).length);
+    }
+  }
+  if (!g.basic) assert.ok((g.vars ?? []).length >= 2, `${g.id}: expected at least 2 variations`);
   if (g.bass) check('bass', parseLine(g.bass).length);
   if (g.melody) check('melody', parseLine(g.melody).length);
   if (g.chords) check('chords', parseComp(g.chords).length);

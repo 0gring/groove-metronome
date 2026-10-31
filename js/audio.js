@@ -1,20 +1,27 @@
-// Web Audio synthesis: drum kit, click, and simple subtractive/additive synth voices.
-// Nothing is sampled, so the app is tiny and works fully offline.
+// Audio engine.
+// - Drums & percussion: recorded samples from the Versilian Community Sample Library (CC0), with
+//   velocity layers and round-robin; synthesized fallbacks while samples load (or if they can't).
+// - Kick: synthesized (layered body, sub and click).
+// - Finger / upright bass and guitar: Karplus-Strong plucked-string physical model.
+// - E-piano (TX81Z FM piano) and grand piano (Kawai): samples; synth fallback.
+// - Synth bass, 808, organ, pad and leads: subtractive / additive synthesis.
+// - Mix: stereo placement, room reverb send, compressor + soft limiter.
 
 const mtof = (m) => 440 * 2 ** ((m - 69) / 12);
 
 export const SOUNDS = {
   bass: {
-    electric: { label: 'Electric', waves: [{ type: 'sawtooth' }, { type: 'sine', gain: 0.8 }], cutoff: 260, cutEnv: 1300, q: 4, a: 0.004, d: 0.2, s: 0.55, r: 0.05, gain: 0.85 },
+    electric: { label: 'Finger bass', ks: { bright: 0.42, pick: 0.16, decay: 0.997, lp: 1500, sub: 0.35, gain: 1.7, r: 0.07 }, waves: [{ type: 'sawtooth' }, { type: 'sine', gain: 0.8 }], cutoff: 260, cutEnv: 1300, q: 4, a: 0.004, d: 0.2, s: 0.55, r: 0.05, gain: 0.85 },
     synth: { label: 'Synth', waves: [{ type: 'square' }, { type: 'sawtooth', detune: 10 }], cutoff: 300, cutEnv: 2400, q: 9, a: 0.003, d: 0.14, s: 0.45, r: 0.04, gain: 0.6 },
-    upright: { label: 'Upright', waves: [{ type: 'triangle' }, { type: 'sine', gain: 0.7 }], cutoff: 700, cutEnv: 600, q: 1, a: 0.008, d: 0.35, s: 0.15, r: 0.1, gain: 1.1 },
+    upright: { label: 'Upright', ks: { bright: 0.22, pick: 0.28, decay: 0.991, lp: 800, sub: 0.45, thump: 0.5, gain: 1.5, r: 0.12 }, waves: [{ type: 'triangle' }, { type: 'sine', gain: 0.7 }], cutoff: 700, cutEnv: 600, q: 1, a: 0.008, d: 0.35, s: 0.15, r: 0.1, gain: 1.1 },
     '808': { label: '808', waves: [{ type: 'sine' }], cutoff: 3000, q: 0.5, a: 0.002, d: 0.8, s: 0.75, r: 0.2, glide: 1.6, drive: true, gain: 0.9 },
   },
   chords: {
-    epiano: { label: 'E-piano', waves: [{ type: 'sine' }, { type: 'sine', mult: 2, gain: 0.4, decay: 0.3 }, { type: 'sine', mult: 7, gain: 0.08, decay: 0.05 }], cutoff: 6000, a: 0.003, d: 0.9, s: 0.25, r: 0.25, gain: 0.45 },
+    epiano: { label: 'E-piano', sampled: 'ep', r: 0.3, waves: [{ type: 'sine' }, { type: 'sine', mult: 2, gain: 0.4, decay: 0.3 }, { type: 'sine', mult: 7, gain: 0.08, decay: 0.05 }], cutoff: 6000, a: 0.003, d: 0.9, s: 0.25, r: 0.25, gain: 0.45 },
     organ: { label: 'Organ', waves: [{ type: 'sine' }, { type: 'sine', mult: 2, gain: 0.5 }, { type: 'sine', mult: 3, gain: 0.3 }, { type: 'sine', mult: 4, gain: 0.15 }], cutoff: 5000, a: 0.008, d: 0.05, s: 1, r: 0.05, gain: 0.28 },
-    guitar: { label: 'Guitar', waves: [{ type: 'sawtooth' }], cutoff: 900, cutEnv: 2500, q: 2, a: 0.002, d: 0.14, s: 0.2, r: 0.06, gain: 0.32, strum: 0.009 },
-    pad: { label: 'Pad', waves: [{ type: 'sawtooth', detune: -9 }, { type: 'sawtooth', detune: 9 }], cutoff: 1100, q: 1, a: 0.25, d: 0.4, s: 0.8, r: 0.5, gain: 0.14 },
+    piano: { label: 'Piano', sampled: 'piano', r: 0.35, waves: [{ type: 'triangle' }, { type: 'sine', mult: 2, gain: 0.3, decay: 0.4 }], cutoff: 5000, a: 0.002, d: 1.2, s: 0.2, r: 0.3, gain: 0.4 },
+    guitar: { label: 'Guitar', ks: { bright: 0.75, pick: 0.13, decay: 0.994, lp: 4200, hp: 140, gain: 2.2, r: 0.06 }, waves: [{ type: 'sawtooth' }], cutoff: 900, cutEnv: 2500, q: 2, a: 0.002, d: 0.14, s: 0.2, r: 0.06, gain: 0.32, strum: 0.009 },
+    pad: { label: 'Pad', waves: [{ type: 'sawtooth', detune: -9 }, { type: 'sawtooth', detune: 9 }], cutoff: 1100, q: 1, a: 0.25, d: 0.4, s: 0.8, r: 0.5, gain: 0.3 },
   },
   melody: {
     square: { label: 'Square lead', waves: [{ type: 'square' }], cutoff: 2600, q: 1, a: 0.005, d: 0.15, s: 0.6, r: 0.06, gain: 0.22 },
@@ -26,32 +33,113 @@ export const SOUNDS = {
   },
 };
 
+// Which sample plays for a drum voice at a given velocity, its level and stereo position.
+let rr = 0;
+const alt = (a, b) => (++rr % 2 ? a : b);
+const DRUM_SAMPLES = {
+  hhc: { pick: (v) => (v < 0.4 ? 'hhc-soft' : v >= 0.95 ? 'hhc-hard' : alt('hhc-1', 'hhc-2')), level: 0.62, pan: 0.3 },
+  hho: { pick: () => 'hho', level: 0.45, pan: 0.3 },
+  snare: { pick: (v) => (v < 0.4 ? 'snare-ghost' : v >= 0.95 ? 'snare-hard' : alt('snare-1', 'snare-2')), level: 0.85, pan: 0.05 },
+  rim: { pick: () => alt('rim-1', 'rim-2'), level: 0.6, pan: 0.05 },
+  clap: { pick: () => alt('clap-1', 'clap-2'), level: 0.6, pan: -0.05 },
+  tamb: { pick: (v) => (v >= 0.9 ? 'tamb-hard' : 'tamb-soft'), level: 0.42, pan: 0.45 },
+  shaker: { pick: () => alt('shaker-down', 'shaker-up'), level: 0.55, pan: 0.4 },
+  clave: { pick: () => 'clave', level: 0.5, pan: -0.25 },
+  cowbell: { pick: () => 'cowbell', level: 0.4, pan: 0.25 },
+  conga: { pick: () => 'conga', level: 0.65, pan: -0.3 },
+  tomH: { pick: () => 'tomH', level: 0.75, pan: 0.2 },
+  tomL: { pick: () => 'tomL', level: 0.8, pan: -0.2 },
+  crash: { pick: () => 'crash', level: 0.4, pan: -0.35 },
+  ride: { pick: () => 'ride', level: 0.5, pan: -0.3 },
+};
+const REVERB_SEND = { click: 0, drums: 0.1, bass: 0.02, chords: 0.22, melody: 0.2 };
+
+/**
+ * Karplus-Strong plucked string. Returns a mono Float32Array.
+ * bright: excitation brightness (0..1), pick: pluck position (0..0.5), decay: feedback per period.
+ */
+export function pluck(sr, freq, seconds, { bright = 0.5, pick = 0.2, decay = 0.996 } = {}) {
+  const n = Math.floor(sr * seconds);
+  const y = new Float32Array(n);
+  const P = sr / freq - 0.5; // the averaging filter adds half a sample of delay
+  const N = Math.max(2, Math.floor(P));
+  const frac = P - N;
+  // excitation: low-passed noise with a pick-position comb, DC removed
+  const exc = new Float32Array(N);
+  let lp = 0;
+  for (let i = 0; i < N; i++) {
+    lp += bright * (Math.random() * 2 - 1 - lp);
+    exc[i] = lp;
+  }
+  const d = Math.max(1, Math.floor(pick * N));
+  const shaped = exc.map((v, i) => v - (i >= d ? exc[i - d] : 0));
+  const mean = shaped.reduce((a, b) => a + b, 0) / N;
+  let prev = 0;
+  for (let i = 0; i < n; i++) {
+    if (i < N) {
+      y[i] = shaped[i] - mean;
+      continue;
+    }
+    const s = y[i - N] * (1 - frac) + (i - N - 1 >= 0 ? y[i - N - 1] : 0) * frac;
+    y[i] = decay * 0.5 * (s + prev);
+    prev = s;
+  }
+  let peak = 0;
+  for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(y[i]));
+  if (peak > 0) for (let i = 0; i < n; i++) y[i] *= 0.9 / peak;
+  return y;
+}
+
 export class AudioEngine {
   constructor() {
     this.ctx = null;
     this.openHats = [];
   }
 
-  init() {
+  /** Create the audio graph. Pass an (Offline)AudioContext to render somewhere else (tests). */
+  init(ctxOverride = null) {
     if (this.ctx) return this.ctx;
-    const AC = window.AudioContext || window.webkitAudioContext;
-    const ctx = (this.ctx = new AC({ latencyHint: 'interactive' }));
+    const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
+    const ctx = (this.ctx = ctxOverride ?? new AC({ latencyHint: 'interactive' }));
+    this.samples = {}; // name -> AudioBuffer
+    this.keys = { ep: [], piano: [] }; // [{ midi, buffer }]
+    this.ksCache = new Map();
 
     this.master = ctx.createGain();
-    this.master.gain.value = 0.85;
+    this.master.gain.value = 0.5;
     const comp = ctx.createDynamicsCompressor();
-    comp.threshold.value = -12;
-    comp.knee.value = 8;
-    comp.ratio.value = 4;
-    comp.attack.value = 0.003;
-    comp.release.value = 0.15;
-    this.master.connect(comp);
-    comp.connect(ctx.destination);
+    comp.threshold.value = -14;
+    comp.knee.value = 10;
+    comp.ratio.value = 3;
+    comp.attack.value = 0.004;
+    comp.release.value = 0.18;
+    // soft limiter so peaks round off instead of clipping
+    const limit = ctx.createWaveShaper();
+    const curve = new Float32Array(2048);
+    for (let i = 0; i < curve.length; i++) {
+      const x = (i / (curve.length - 1)) * 2 - 1;
+      curve[i] = Math.tanh(1.1 * x) / Math.tanh(1.1);
+    }
+    limit.curve = curve;
+    limit.oversample = '2x';
+    this.master.connect(comp).connect(limit).connect(ctx.destination);
+
+    // room reverb (generated impulse response)
+    const verb = ctx.createConvolver();
+    verb.buffer = this.impulse(1.7, 3.0);
+    const verbIn = ctx.createBiquadFilter();
+    verbIn.type = 'lowpass';
+    verbIn.frequency.value = 5500;
+    const verbHp = this.filter('highpass', 180);
+    verbIn.connect(verbHp).connect(verb).connect(this.master);
 
     this.buses = {};
     for (const name of ['click', 'drums', 'bass', 'chords', 'melody']) {
       const g = ctx.createGain();
       g.connect(this.master);
+      const send = ctx.createGain();
+      send.gain.value = REVERB_SEND[name];
+      g.connect(send).connect(verbIn);
       this.buses[name] = g;
     }
 
@@ -67,6 +155,49 @@ export class AudioEngine {
       this.driveCurve[i] = Math.tanh(2.5 * x);
     }
     return ctx;
+  }
+
+  impulse(seconds, power) {
+    const ctx = this.ctx;
+    const len = Math.floor(ctx.sampleRate * seconds);
+    const buf = ctx.createBuffer(2, len, ctx.sampleRate);
+    const pre = Math.floor(ctx.sampleRate * 0.012);
+    for (let c = 0; c < 2; c++) {
+      const d = buf.getChannelData(c);
+      for (let i = pre; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - (i - pre) / (len - pre)) ** power;
+    }
+    return buf;
+  }
+
+  /** Load the recorded samples (drums first, then keys). Safe to call more than once. */
+  loadSamples(base = 'samples/') {
+    this.loading ??= (async () => {
+      const ctx = this.ctx;
+      const get = async (path) => {
+        const res = await fetch(base + path);
+        if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
+        const data = await res.arrayBuffer();
+        return new Promise((resolve, reject) => ctx.decodeAudioData(data, resolve, reject));
+      };
+      const manifest = await (await fetch(base + 'manifest.json')).json();
+      await Promise.all(
+        Object.entries(manifest.drums).map(async ([name, path]) => {
+          this.samples[name] = await get(path);
+        }),
+      );
+      for (const kind of ['ep', 'piano']) {
+        const list = await Promise.all(
+          manifest[kind].map(async ([file, measured]) => ({ midi: measured, buffer: await get(`${kind}/${file}.flac`) })),
+        );
+        this.keys[kind] = list.sort((a, b) => a.midi - b.midi);
+      }
+      return true;
+    })().catch((e) => {
+      console.warn('Samples unavailable, using synthesized sounds:', e.message);
+      this.loading = null;
+      return false;
+    });
+    return this.loading;
   }
 
   async resume() {
@@ -145,18 +276,63 @@ export class AudioEngine {
   // ------------------------------------------------------------ drums
 
   drum(name, t, vel) {
+    const map = DRUM_SAMPLES[name];
+    const buf = map && this.samples[map.pick(vel)];
+    if (buf) return this.playDrum(name, buf, t, vel, map);
     const fn = this[`d_${name}`];
     if (fn) fn.call(this, t, vel, this.buses.drums);
   }
 
+  playDrum(name, buf, t, vel, map) {
+    const ctx = this.ctx;
+    if (name === 'hhc' || name === 'hho') this.chokeHats(t);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = 1 + (Math.random() - 0.5) * 0.02; // tiny pitch variation, like real hits
+    const g = ctx.createGain();
+    g.gain.value = map.level * vel ** 1.3;
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = map.pan;
+    src.connect(g).connect(pan).connect(this.buses.drums);
+    src.start(t);
+    if (name === 'hho') this.openHats.push({ t, g });
+  }
+
+  chokeHats(t) {
+    for (const h of this.openHats) if (h.t < t) h.g.gain.setTargetAtTime(0, t, 0.012);
+    this.openHats = this.openHats.filter((h) => h.t >= t);
+  }
+
   d_kick(t, v, out) {
-    const o = this.osc('sine', 165, t, t + 0.5);
-    o.frequency.exponentialRampToValueAtTime(46, t + 0.12);
-    const g = this.envGain(t, v * 1.1, 0.002, 0.42);
-    o.connect(g).connect(out);
+    // body: fast pitch drop into a round low tone, slightly saturated
+    const body = this.osc('sine', 150, t, t + 0.6);
+    body.frequency.setValueAtTime(150, t);
+    body.frequency.exponentialRampToValueAtTime(62, t + 0.035);
+    body.frequency.exponentialRampToValueAtTime(48, t + 0.25);
+    const bg = this.ctx.createGain();
+    bg.gain.setValueAtTime(0, t);
+    bg.gain.linearRampToValueAtTime(v * 0.62, t + 0.002);
+    bg.gain.setTargetAtTime(v * 0.34, t + 0.02, 0.05);
+    bg.gain.setTargetAtTime(0, t + 0.09, 0.09);
+    const sat = this.ctx.createWaveShaper();
+    sat.curve = this.driveCurve;
+    body.connect(bg).connect(sat).connect(out);
+    // beater click
     const c = this.noise(t, 0.02);
-    const cg = this.envGain(t, v * 0.25, 0.001, 0.012);
-    c.connect(this.filter('bandpass', 3500, 1)).connect(cg).connect(out);
+    const cg = this.envGain(t, v * 0.32, 0.0005, 0.01);
+    c.connect(this.filter('bandpass', 2800, 0.8)).connect(cg).connect(out);
+    const tk = this.osc('triangle', 1100, t, t + 0.02);
+    const tg = this.envGain(t, v * 0.12, 0.0005, 0.008);
+    tk.connect(tg).connect(out);
+  }
+
+  d_tamb(t, v, out) {
+    // jingles: bright noise + metallic partials
+    const n = this.noise(t, 0.3);
+    const g = this.envGain(t, v * 0.35, 0.002, 0.18);
+    n.connect(this.filter('highpass', 6500)).connect(g).connect(out);
+    const m = this.envGain(t, v * 0.1, 0.002, 0.15);
+    this.metal(t, 0.2, 90, 9000, 7000).connect(m).connect(out);
   }
 
   d_snare(t, v, out) {
@@ -322,8 +498,93 @@ export class AudioEngine {
     node.connect(amp).connect(this.buses[busName]);
   }
 
+  /** Cached Karplus-Strong string for an instrument at a MIDI note. */
+  ksBuffer(id, midi, ks, seconds) {
+    const key = `${id}:${midi}`;
+    let buf = this.ksCache.get(key);
+    if (!buf) {
+      const sr = this.ctx.sampleRate;
+      const data = pluck(sr, 440 * 2 ** ((midi - 69) / 12), seconds, ks);
+      buf = this.ctx.createBuffer(1, data.length, sr);
+      buf.copyToChannel(data, 0);
+      this.ksCache.set(key, buf);
+    }
+    return buf;
+  }
+
+  /** Plucked string note: physical-model buffer + tone filter + amp envelope. */
+  ksVoice(busName, id, p, t, midi, dur, vel, { dead = false, pan = 0 } = {}) {
+    const ctx = this.ctx;
+    const ks = p.ks;
+    const src = ctx.createBufferSource();
+    src.buffer = this.ksBuffer(id, midi, ks, busName === 'bass' ? 2.4 : 1.6);
+    const lp = this.filter('lowpass', dead ? 500 : ks.lp * (0.6 + 0.5 * vel), 0.7);
+    let node = src.connect(lp);
+    if (ks.hp) node = node.connect(this.filter('highpass', ks.hp));
+    const amp = ctx.createGain();
+    const peak = vel * ks.gain;
+    const rel = ks.r;
+    const hold = dead ? 0.03 : Math.max(dur, 0.04);
+    amp.gain.setValueAtTime(peak, t);
+    amp.gain.setTargetAtTime(0, t + hold, dead ? 0.01 : rel / 3);
+    node.connect(amp);
+    let out = amp;
+    if (pan) {
+      const pn = ctx.createStereoPanner();
+      pn.pan.value = pan;
+      out = amp.connect(pn);
+    }
+    out.connect(this.buses[busName]);
+    const end = t + hold + 0.5;
+    src.start(t);
+    src.stop(end);
+    // body: a little sine fundamental for weight, and a finger/thump transient
+    if (ks.sub && !dead) {
+      const o = this.osc('sine', 440 * 2 ** ((midi - 69) / 12), t, end);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(peak * ks.sub, t + 0.006);
+      g.gain.setTargetAtTime(peak * ks.sub * 0.6, t + 0.01, 0.15);
+      g.gain.setTargetAtTime(0, t + hold, rel / 3);
+      o.connect(g).connect(this.buses[busName]);
+    }
+    if (ks.thump) {
+      const n = this.noise(t, 0.04);
+      const g = this.envGain(t, peak * ks.thump * 0.3, 0.001, 0.03);
+      n.connect(this.filter('lowpass', 400)).connect(g).connect(this.buses[busName]);
+    }
+  }
+
+  /** Sampled key instrument (e-piano / piano), pitch-shifted from the nearest recorded note. */
+  sampledKey(busName, kind, p, t, midi, dur, vel, pan = 0) {
+    const list = this.keys[kind];
+    if (!list?.length) return false;
+    const ctx = this.ctx;
+    let best = list[0];
+    for (const k of list) if (Math.abs(k.midi - midi) < Math.abs(best.midi - midi)) best = k;
+    const src = ctx.createBufferSource();
+    src.buffer = best.buffer;
+    src.playbackRate.value = 2 ** ((midi - best.midi) / 12);
+    const tone = this.filter('lowpass', 1800 + 7000 * vel, 0.5);
+    const amp = ctx.createGain();
+    const peak = vel * (kind === 'piano' ? 1.5 : 1.25);
+    amp.gain.setValueAtTime(peak, t);
+    amp.gain.setTargetAtTime(0, t + Math.max(dur, 0.05), (p.r ?? 0.3) / 3);
+    let out = src.connect(tone).connect(amp);
+    if (pan) {
+      const pn = ctx.createStereoPanner();
+      pn.pan.value = pan;
+      out = out.connect(pn);
+    }
+    out.connect(this.buses[busName]);
+    src.start(t);
+    src.stop(t + Math.max(dur, 0.05) + (p.r ?? 0.3) * 2.5);
+    return true;
+  }
+
   bass(t, midi, dur, vel, sound, dead = false) {
     const p = SOUNDS.bass[sound] ?? SOUNDS.bass.electric;
+    if (p.ks) return this.ksVoice('bass', sound, p, t, midi, dur, vel, { dead });
     if (dead) this.voice('bass', { ...p, cutoff: 350, cutEnv: 300, s: 0, d: 0.03, r: 0.02, glide: 0 }, t, midi, 0.03, vel * 0.7);
     else this.voice('bass', p, t, midi, dur, vel);
   }
@@ -331,7 +592,13 @@ export class AudioEngine {
   chord(t, midis, dur, vel, sound) {
     const p = SOUNDS.chords[sound] ?? SOUNDS.chords.epiano;
     const per = vel / Math.sqrt(midis.length);
-    midis.forEach((m, i) => this.voice('chords', p, t + i * (p.strum ?? 0), m, dur, per));
+    midis.forEach((m, i) => {
+      const at = t + i * (p.strum ?? 0);
+      const pan = (i / Math.max(1, midis.length - 1) - 0.5) * 0.5; // spread the chord across the stereo field
+      if (p.sampled && this.sampledKey('chords', p.sampled, p, at, m, dur, per, pan)) return;
+      if (p.ks) return this.ksVoice('chords', 'guitar', p, at, m, dur, per, { pan });
+      this.voice('chords', p, at, m, dur, per);
+    });
   }
 
   melody(t, midi, dur, vel, sound) {
