@@ -176,7 +176,12 @@ export function musicXmlParts(xmlText, DP = globalThis.DOMParser) {
   return [...doc.querySelectorAll('part-list score-part')].map((p) => ({ id: p.getAttribute('id'), name: txt(p, 'part-name') || p.getAttribute('id') }));
 }
 
-export function parseMusicXML(xmlText, { partIndex = null, title = 'Score' } = {}, DP = globalThis.DOMParser) {
+/**
+ * octave: semitone shift applied to all notes. Leave undefined for automatic: bass-clef parts
+ * without a <transpose> element are assumed to be written bass (sounding an octave lower),
+ * which is typical of scanned / OMR scores.
+ */
+export function parseMusicXML(xmlText, { partIndex = null, title = 'Score', octave } = {}, DP = globalThis.DOMParser) {
   const doc = new DP().parseFromString(xmlText, 'application/xml');
   if (doc.querySelector('parsererror')) throw new Error('This file is not valid MusicXML.');
   const root = doc.documentElement;
@@ -201,6 +206,8 @@ export function parseMusicXML(xmlText, { partIndex = null, title = 'Score' } = {
   let transpose = 0;
   let tempo = null;
   let tabTuning = null;
+  let hasTranspose = false;
+  let firstClef = null;
   const raw = []; // { q (absolute quarter position), dq, midi, si, f, dead }
   let measureQ = 0;
   let first = true;
@@ -220,7 +227,9 @@ export function parseMusicXML(xmlText, { partIndex = null, title = 'Score' } = {
           curBeatType = parseInt(txt(time, 'beat-type'), 10) || 4;
           if (beats === null) [beats, beatType] = [curBeats, curBeatType];
         }
+        firstClef ??= txt(el, 'clef sign') ?? null;
         const tr = el.querySelector('transpose');
+        if (tr) hasTranspose = true;
         if (tr) transpose = num(tr, 'chromatic') + 12 * num(tr, 'octave-change');
         const sd = el.querySelector('staff-details');
         if (sd && sd.querySelector('staff-tuning')) {
@@ -289,6 +298,11 @@ export function parseMusicXML(xmlText, { partIndex = null, title = 'Score' } = {
 
   beats ??= 4;
   beatType ??= 4;
+  const mids = raw.map((r) => r.midi).sort((a, b) => a - b);
+  const median = mids[Math.floor(mids.length / 2)];
+  const octaveAuto = !hasTranspose && !tabTuning && firstClef === 'F' && median >= 40 && median <= 64 ? -12 : 0;
+  const shift = octave ?? octaveAuto;
+  for (const r of raw) r.midi += shift;
   const qPerBeat = 4 / beatType;
   const notes = raw.map((r) => {
     const abs = r.q / qPerBeat;
@@ -306,6 +320,7 @@ export function parseMusicXML(xmlText, { partIndex = null, title = 'Score' } = {
   notes.forEach((n) => delete n.str);
   return finalize({
     title: name, kind: 'xml', beats, beatType, cpb: beatType >= 8 ? 2 : 4, ...(tun ?? {}), notes, tempo, parts, partIndex,
+    octave: shift, octaveAuto,
   });
 }
 

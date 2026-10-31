@@ -2,6 +2,7 @@
 
 import { parseAsciiTab, parseMusicXML, readMxl, findTabBlocks } from './importers.js';
 import { listItems, getItem, putItem, deleteItem, newId } from './library.js';
+import * as omr from './omr.js';
 
 const $ = (id) => document.getElementById(id);
 const NAMES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
@@ -32,12 +33,16 @@ export function initPractice(api) {
 
   async function build(item) {
     const st = item.settings;
-    const opts = { beats: st.beats ?? 4, title: item.name, partIndex: st.part ?? null };
+    const opts = { beats: st.beats ?? 4, title: item.name, partIndex: st.part ?? null, octave: st.octave };
     if (item.type === 'tab') return { piece: parseAsciiTab(item.data, opts) };
-    if (item.type === 'xml') return { piece: parseMusicXML(item.data, opts) };
-    if (item.type === 'mxl') {
-      item._xml ??= await readMxl(item.data);
-      return { piece: parseMusicXML(item._xml, opts) };
+    if (item.type === 'xml' || item.type === 'mxl') {
+      if (item.type === 'mxl') item._xml ??= await readMxl(item.data);
+      const piece = parseMusicXML(item.type === 'mxl' ? item._xml : item.data, opts);
+      // converted from a PDF: show the original pages alongside
+      let pdf = null;
+      const src = st.pdfId ? await getItem(st.pdfId).catch(() => null) : null;
+      if (src) pdf = await (await pdfMod()).openPdf(src.data).catch(() => null);
+      return { piece, pdf };
     }
     // PDF: always viewable; playable too if it contains text tab
     const { openPdf, extractText } = await pdfMod();
@@ -163,6 +168,8 @@ export function initPractice(api) {
     $('pieceControls').hidden = !piece;
     updateInfo();
 
+    $('omrBox').hidden = item.type !== 'pdf';
+    if (item.type === 'pdf') showOmrStatus(item);
     $('pdfView').hidden = !active.pdf;
     if (active.pdf) {
       active.page = Math.min(active.page, active.pdf.numPages);
@@ -208,6 +215,9 @@ export function initPractice(api) {
       sel.replaceChildren(...[2, 3, 4, 5, 6, 7].map((n) => new Option(`${n}`, String(n))));
       sel.value = String(piece.beats);
     }
+    const isXml = item.type === 'xml' || item.type === 'mxl';
+    $('octWrap').hidden = !isXml;
+    if (isXml) $('pieceOctave').value = String(piece.octave ?? 0);
     const parts = piece.parts ?? [];
     $('partWrap').hidden = parts.length < 2;
     if (parts.length >= 2) {
@@ -328,6 +338,147 @@ export function initPractice(api) {
     showPage();
   }
 
+  // ---------------------------------------------------------------- sheet music -> MusicXML (Audiveris)
+
+  let pollTimer = null;
+
+  function showOmrStatus(item) {
+    const job = item.settings.omr;
+    const btn = $('omrBtn');
+    const st = $('omrStatus');
+    if (!job) {
+      btn.textContent = '🎼 Convert to MusicXML';
+      st.textContent = active?.piece
+        ? 'This PDF already has playable tab. Convert anyway to read printed notation.'
+        : 'Turn the printed notation into playable notes with Audiveris (takes a few minutes).';
+    } else if (job.status === 'running') {
+      const min = Math.max(0, Math.round((Date.now() - job.started) / 60000));
+      btn.textContent = '⏳ Converting… (check now)';
+      st.textContent = `Running on GitHub, started ${min ? `${min} min ago` : 'just now'}. Usually 2–5 minutes. You can keep practising — it will show up in your library.`;
+    } else if (job.status === 'done') {
+      btn.textContent = '▶ Open the MusicXML version';
+      st.textContent = 'Converted ✓ — check it by ear: recognition can miss notes or rhythms.';
+    } else {
+      btn.textContent = '🎼 Try converting again';
+      st.textContent = `Conversion failed: ${job.message ?? 'unknown error'}`;
+    }
+  }
+
+  async function startConvert() {
+    const item = active?.item;
+    if (!item || item.type !== 'pdf') return;
+    const job = item.settings.omr;
+    if (job?.status === 'done' && (await getItem(job.resultId))) return open(job.resultId);
+    if (job?.status === 'running') return pollAll(true);
+    const cfg = omr.loadConfig();
+    if (!omr.isConfigured(cfg)) {
+      $('omrSetup').open = true;
+      $('omrSetup').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      msg('Set up the GitHub connection first (one time).', 'err');
+      return;
+    }
+    $('omrBtn').disabled = true;
+    $('omrStatus').textContent = 'Uploading to GitHub…';
+    try {
+      const jobId = newId();
+      await omr.submit(cfg, jobId, item.data, item.name);
+      item.settings.omr = { jobId, status: 'running', started: Date.now() };
+      await save(item);
+      schedulePoll();
+    } catch (e) {
+      item.settings.omr = { status: 'failed', message: e.message };
+      await save(item);
+    } finally {
+      $('omrBtn').disabled = false;
+      if (active?.item.id === item.id) showOmrStatus(item);
+    }
+  }
+
+  async function pollAll(now = false) {
+    const cfg = omr.loadConfig();
+    if (!omr.isConfigured(cfg)) return;
+    let items = [];
+    try {
+      items = (await listItems()).filter((it) => it.settings.omr?.status === 'running');
+    } catch {
+      return;
+    }
+    for (const it of items) {
+      const job = it.settings.omr;
+      try {
+        const r = await omr.poll(cfg, job.jobId);
+        if (r.state === 'running') {
+          if (Date.now() - job.started > 45 * 60000) {
+            it.settings.omr = { ...job, status: 'failed', message: 'Timed out. Check the “Sheet music to MusicXML” run in your repo’s Actions tab.' };
+            await save(it);
+          }
+          continue;
+        }
+        if (r.state === 'failed') {
+          it.settings.omr = { ...job, status: 'failed', message: r.info?.message };
+          await save(it);
+          msg(`Couldn’t convert “${it.name}”: ${r.info?.message ?? ''}`, 'err');
+          continue;
+        }
+        const res = { id: newId(), name: `${it.name} (MusicXML)`, type: 'mxl', data: r.mxl, settings: { pdfId: it.id }, added: Date.now() };
+        await build(res); // validate
+        await save(res);
+        it.settings.omr = { ...job, status: 'done', resultId: res.id, finished: Date.now() };
+        await save(it);
+        msg(`“${it.name}” converted — “${res.name}” is in your library.`, 'ok');
+        await renderList();
+      } catch (e) {
+        if (now) msg(e.message, 'err');
+      }
+      if (active?.item.id === it.id) {
+        active.item = await getItem(it.id);
+        showOmrStatus(active.item);
+      }
+    }
+    if (active?.item.type === 'pdf') showOmrStatus(active.item);
+    schedulePoll(items.length > 0);
+  }
+
+  async function schedulePoll(force = true) {
+    clearTimeout(pollTimer);
+    if (!force) {
+      const pending = (await listItems().catch(() => [])).some((it) => it.settings.omr?.status === 'running');
+      if (!pending) return;
+    }
+    pollTimer = setTimeout(() => pollAll(), 20000);
+  }
+
+  function initOmrSetup() {
+    const cfg = omr.loadConfig();
+    $('omrRepo').value = cfg.repo || omr.guessRepo();
+    $('omrToken').value = cfg.token ? '••••••••' : '';
+    const setupMsg = (t, k = '') => {
+      $('omrSetupMsg').textContent = t;
+      $('omrSetupMsg').className = `import-msg ${k}`;
+    };
+    $('omrSave').onclick = async () => {
+      const repo = $('omrRepo').value.trim().replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/$/, '');
+      const typed = $('omrToken').value.trim();
+      const token = typed === '••••••••' ? omr.loadConfig().token : typed;
+      if (!/^[\w.-]+\/[\w.-]+$/.test(repo) || !token) return setupMsg('Enter the repository as owner/name and paste a token.', 'err');
+      omr.saveConfig({ repo, token });
+      $('omrRepo').value = repo;
+      $('omrToken').value = '••••••••';
+      setupMsg('Checking…');
+      try {
+        setupMsg(await omr.testConnection({ repo, token }), 'ok');
+        schedulePoll(false);
+      } catch (e) {
+        setupMsg(e.message, 'err');
+      }
+    };
+    $('omrForget').onclick = () => {
+      omr.saveConfig({ repo: $('omrRepo').value.trim() });
+      $('omrToken').value = '';
+      setupMsg('Token removed from this device.', 'ok');
+    };
+  }
+
   // ---------------------------------------------------------------- events
 
   $('importFile').addEventListener('change', (e) => {
@@ -360,8 +511,18 @@ export function initPractice(api) {
     }
   };
   $('closePiece').onclick = close;
+  $('omrBtn').onclick = startConvert;
+  initOmrSetup();
+  schedulePoll(false);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) schedulePoll(false).then(() => pollAll());
+  });
   $('pieceBeats').onchange = (e) => {
     active.item.settings.beats = Number(e.target.value);
+    rebuild();
+  };
+  $('pieceOctave').onchange = (e) => {
+    active.item.settings.octave = Number(e.target.value);
     rebuild();
   };
   $('piecePart').onchange = (e) => {

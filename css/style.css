@@ -275,3 +275,16 @@ body.piece-mode .groove-only { display: none !important; }
 .pdf-wrap canvas { display: block; max-width: 100%; }
 .speed-auto + .speed-auto, .pdf-view .speed-auto { margin-top: 10px; }
 .tcol.bar-label .nm { color: var(--muted); }
+
+/* Sheet music conversion */
+.omr-setup { margin: 10px 0 4px; }
+.omr-setup a { color: var(--accent-2); }
+.steps { padding-left: 20px; margin: 6px 0; }
+.steps li { margin: 4px 0; }
+.omr-setup input[type="text"], .omr-setup input[type="password"] {
+  font: inherit; color: var(--text); background: var(--card-2); border: 1px solid var(--line);
+  border-radius: 12px; min-height: 44px; padding: 0 10px; width: 100%;
+}
+.omr-box { margin-top: 12px; display: grid; gap: 4px; }
+.omr-box button { width: 100%; }
+.omr-box .hint { margin: 4px 0 0; }

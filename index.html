@@ -90,6 +90,30 @@
         <textarea id="pasteText" rows="8" spellcheck="false" aria-label="Tab text" placeholder="G|-----------------|&#10;D|---------5--7----|&#10;A|-5---7-----------|&#10;E|-----------------|"></textarea>
         <button id="pasteSave">Add to library</button>
       </div>
+      <details id="omrSetup" class="omr-setup">
+        <summary>Sheet music → MusicXML setup</summary>
+        <p class="hint">Printed notation in a PDF is converted by <b>Audiveris</b> (free, open-source music recognition)
+          running as a GitHub Action in your repository. One-time setup:</p>
+        <ol class="hint steps">
+          <li>Merge this app's code into your repo's default branch (it contains the conversion workflow).</li>
+          <li>On GitHub, create a <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">fine-grained token</a>:
+            <i>Repository access</i> → only your groove-metronome repo; <i>Permissions</i> → <b>Contents: Read and write</b>.</li>
+          <li>Paste the repository and token below. The token is stored only on this device.</li>
+        </ol>
+        <div class="field-row">
+          <label>Repository (owner/name)
+            <input type="text" id="omrRepo" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="owner/groove-metronome">
+          </label>
+          <label>GitHub token
+            <input type="password" id="omrToken" autocomplete="off" placeholder="github_pat_…">
+          </label>
+        </div>
+        <div class="btn-row">
+          <button id="omrSave">Save &amp; test</button>
+          <button id="omrForget" class="secondary">Forget token</button>
+        </div>
+        <p id="omrSetupMsg" class="import-msg" role="status"></p>
+      </details>
       <p id="importMsg" class="import-msg" role="status"></p>
       <ul id="libList" class="lib-list" aria-label="Library"></ul>
 
@@ -107,6 +131,13 @@
             <label id="partWrap">Part
               <select id="piecePart"></select>
             </label>
+            <label id="octWrap">Pitch
+              <select id="pieceOctave">
+                <option value="-12">Bass (sounds 8vb)</option>
+                <option value="0">As written</option>
+                <option value="12">Octave up</option>
+              </select>
+            </label>
             <label>Loop from bar
               <input type="number" id="loopFrom" min="1" inputmode="numeric">
             </label>
@@ -121,6 +152,10 @@
           <p id="pieceBarInfo" class="fb-caption"></p>
           <div class="tab-wrap"><div id="pieceTab" class="tab" role="img"></div></div>
           <p class="hint">Shows the bar you're in and the next one, so you can read ahead. The fretboard below lights up each note.</p>
+        </div>
+        <div id="omrBox" class="omr-box" hidden>
+          <button id="omrBtn">🎼 Convert to MusicXML</button>
+          <p id="omrStatus" class="hint" aria-live="polite"></p>
         </div>
         <div id="pdfView" class="pdf-view" hidden>
           <div class="pdf-nav">

@@ -66,8 +66,26 @@ the fretboard, a **loop from bar X to bar Y**, and everything else still works: 
 "you play" mode, call & response, gap trainer, count-in. The selected groove's drums play along when its
 meter matches the piece; otherwise you get the click.
 
-Printed notation in a PDF can't be turned into notes automatically (that needs optical music recognition) —
-export MusicXML from the program that made it instead.
+### Sheet-music PDFs → MusicXML (Audiveris)
+
+Printed notation can be converted into playable MusicXML with **[Audiveris](https://github.com/Audiveris/audiveris)**
+(free, open-source optical music recognition), which runs as a GitHub Action in your repo
+(`.github/workflows/omr.yml`). From the app: open a PDF in **My music** → **🎼 Convert to MusicXML**.
+The app uploads the PDF to `omr/inbox/`, the workflow converts it (a few minutes), and the result appears in
+your library as a playable piece with the original PDF shown under it.
+
+One-time setup (in the app under *Sheet music → MusicXML setup*):
+
+1. Have this code (including the workflow) on your repo's default branch.
+2. Create a [fine-grained GitHub token](https://github.com/settings/personal-access-tokens/new) with access
+   to **only this repository** and the permission **Contents: Read and write**.
+3. Enter `owner/repo` and the token in the app. The token is kept only on your device and is sent only to
+   `api.github.com`.
+
+You can also skip the app and drop a PDF/PNG/JPG into `omr/inbox/` on GitHub yourself; results land in
+`omr/out/`. Recognition is best on clean, computer-engraved scores and weaker on phone photos and handwriting,
+so check the result by ear. Bass-clef parts are assumed to be written bass (sounding an octave lower); change
+**Pitch** on the piece if needed.
 
 ## Get it on Android
 
@@ -110,7 +128,10 @@ js/tuner.js           microphone pitch detection for the tuner
 js/practice.js        "My music" library, piece view, PDF viewer
 js/importers.js       ASCII tab + MusicXML/.mxl parsers
 js/library.js         IndexedDB storage for imported files
+js/omr.js             GitHub upload/polling for sheet-music conversion
 js/pdfview.js         PDF rendering / text extraction (loads vendor/pdfjs on demand)
 vendor/pdfjs/         pdf.js 4.10.38 legacy build (Apache-2.0)
 sw.js, manifest.webmanifest, icons/   PWA / offline / install
+.github/workflows/omr.yml + .github/scripts/omr-convert.sh   Audiveris conversion
+omr/inbox, omr/out    conversion queue and results
 ```
