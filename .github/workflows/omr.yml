@@ -1,0 +1,66 @@
+name: Sheet music to MusicXML
+
+# Optical music recognition with Audiveris. Triggered when files are added to omr/inbox/
+# (the app uploads them there), or manually.
+on:
+  push:
+    paths: ['omr/inbox/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: omr-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AUDIVERIS_VERSION: '5.11.0'
+
+jobs:
+  convert:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Anything to convert?
+        id: find
+        run: |
+          shopt -s nullglob nocaseglob
+          files=(omr/inbox/*.pdf omr/inbox/*.png omr/inbox/*.jpg omr/inbox/*.jpeg omr/inbox/*.tif omr/inbox/*.tiff)
+          echo "count=${#files[@]}" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "${files[@]}"
+
+      - name: Install Audiveris ${{ env.AUDIVERIS_VERSION }}
+        if: steps.find.outputs.count != '0'
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/audiveris.deb" \
+            "https://github.com/Audiveris/audiveris/releases/download/${AUDIVERIS_VERSION}/Audiveris-${AUDIVERIS_VERSION}-ubuntu24.04-x86_64.deb"
+          sudo apt-get update -q
+          # the package's desktop-menu post-install step can fail on headless runners; the program itself is fine
+          sudo apt-get install -y -q "$RUNNER_TEMP/audiveris.deb" || sudo dpkg --configure -a || true
+          test -x /opt/audiveris/bin/Audiveris
+          mkdir -p "$RUNNER_TEMP/tessdata"
+          curl -fsSL -o "$RUNNER_TEMP/tessdata/eng.traineddata" \
+            https://raw.githubusercontent.com/tesseract-ocr/tessdata/main/eng.traineddata
+
+      - name: Convert
+        if: steps.find.outputs.count != '0'
+        env:
+          TESSDATA_PREFIX: ${{ runner.temp }}/tessdata
+        run: .github/scripts/omr-convert.sh
+
+      - name: Commit results
+        if: steps.find.outputs.count != '0'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A omr
+          git commit -m "Convert sheet music to MusicXML (Audiveris)"
+          for i in 1 2 3 4; do
+            git push && exit 0
+            sleep $((i * 3))
+            git pull --rebase -q
+          done
+          exit 1

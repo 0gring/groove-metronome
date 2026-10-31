@@ -29,8 +29,63 @@ and works offline. Every sound is synthesized live with the Web Audio API (no sa
 - **Practice tools:** gap trainer (plays N bars, goes silent for M bars — test your internal clock),
   tempo trainer (+X BPM every N bars up to a target), screen flash and phone vibration on the beat,
   keep-screen-on.
+- **Practice speed:** play at 50 / 60 / 70 / 85 / 100% of the target tempo, optionally stepping up
+  automatically every N bars until you're at full speed.
 - Groove changes while playing happen on the next bar line, so you stay in time.
 - Settings are remembered between sessions.
+
+## For bass players
+
+- **You play the bass:** set *The app's bass* to *Silent* — the line keeps showing in the tab and grid
+  while you play it — or *Call & response*: the app plays a bar, you play it back the next bar.
+- **Live bass tab** (4- or 5-string) with note names and counting (1 e & a), following the chords and
+  lighting up the current note. Fingerings keep your hand in one position.
+- **Now / Next chord** display, so you always see where you're heading.
+- **Fretboard view** (frets 0–12, 4 or 5 strings) for the current chord: root, chord tones, and optionally
+  the matching scale (Dorian for m7, Mixolydian for 7, …) or pentatonic, labelled as intervals or note
+  names. The note the bass is playing lights up live, so you see the line move across the neck.
+- **Bass line styles:** groove's own line, roots, root–5th–octave, *lock to the kick*, walking lines with
+  chromatic approach notes, and 🎲 random groove lines.
+- **Drums: kick only / kick + snare** to practise locking in with the kick drum.
+- **Chord changes:** swap in a one-chord vamp, I–IV–V, I–vi–IV–V, ii–V–I, minor, 12-bar blues or the
+  circle of 4ths (all 12 keys) over any groove.
+- **Bass tuner:** microphone tuner that tracks down to low B (5-string), plus reference notes B E A D G.
+
+## Practise your own music
+
+Import files into **My music** (they're saved on your device and reopen next time):
+
+| File | What you get |
+|---|---|
+| Text tab (`.txt`, or paste it in) | Playable. Rhythm is read from the spacing between bar lines (quantized to 16ths). Detects 4/5/6-string bass, guitar, drop/flat tunings. |
+| MusicXML (`.musicxml`, `.xml`, `.mxl`) | Playable with exact rhythm. Export from MuseScore, Guitar Pro, Sibelius, Finale… Picks the bass part automatically (switchable), keeps tab fingerings, file tempo, ties and pickup bars. |
+| PDF | Shown page by page next to the metronome, with page-turn buttons, tap-to-turn and auto page-turn every N bars. If the PDF contains tab as text, it's also playable. |
+
+While practising a piece you get a tab of the current bar **and the next one** (read ahead), the note lit up on
+the fretboard, a **loop from bar X to bar Y**, and everything else still works: practice speed, silent
+"you play" mode, call & response, gap trainer, count-in. The selected groove's drums play along when its
+meter matches the piece; otherwise you get the click.
+
+### Sheet-music PDFs → MusicXML (Audiveris)
+
+Printed notation can be converted into playable MusicXML with **[Audiveris](https://github.com/Audiveris/audiveris)**
+(free, open-source optical music recognition), which runs as a GitHub Action in your repo
+(`.github/workflows/omr.yml`). From the app: open a PDF in **My music** → **🎼 Convert to MusicXML**.
+The app uploads the PDF to `omr/inbox/`, the workflow converts it (a few minutes), and the result appears in
+your library as a playable piece with the original PDF shown under it.
+
+One-time setup (in the app under *Sheet music → MusicXML setup*):
+
+1. Have this code (including the workflow) on your repo's default branch.
+2. Create a [fine-grained GitHub token](https://github.com/settings/personal-access-tokens/new) with access
+   to **only this repository** and the permission **Contents: Read and write**.
+3. Enter `owner/repo` and the token in the app. The token is kept only on your device and is sent only to
+   `api.github.com`.
+
+You can also skip the app and drop a PDF/PNG/JPG into `omr/inbox/` on GitHub yourself; results land in
+`omr/out/`. Recognition is best on clean, computer-engraved scores and weaker on phone photos and handwriting,
+so check the result by ear. Bass-clef parts are assumed to be written bass (sounding an octave lower); change
+**Pitch** on the piece if needed.
 
 ## Get it on Android
 
@@ -49,6 +104,8 @@ Any static file server works (ES modules need http, not `file://`):
 ```sh
 python3 -m http.server 8000   # then open http://localhost:8000
 node tests/grooves.test.mjs   # validate groove data & theory helpers
+node tests/tuner.test.mjs     # pitch detector accuracy on synthetic bass notes
+node tests/importers.test.mjs # ASCII tab parser and .mxl unzip (sample files in tests/fixtures/)
 ```
 
 ## Adding a groove
@@ -66,6 +123,15 @@ css/style.css         styles (mobile-first)
 js/app.js             scheduler, UI, practice tools
 js/audio.js           synthesized drum kit and instruments
 js/grooves.js         groove library
-js/theory.js          pattern parsers, chord theory, melody generator
+js/theory.js          pattern parsers, chord theory, melody & bass line generators
+js/tuner.js           microphone pitch detection for the tuner
+js/practice.js        "My music" library, piece view, PDF viewer
+js/importers.js       ASCII tab + MusicXML/.mxl parsers
+js/library.js         IndexedDB storage for imported files
+js/omr.js             GitHub upload/polling for sheet-music conversion
+js/pdfview.js         PDF rendering / text extraction (loads vendor/pdfjs on demand)
+vendor/pdfjs/         pdf.js 4.10.38 legacy build (Apache-2.0)
 sw.js, manifest.webmanifest, icons/   PWA / offline / install
+.github/workflows/omr.yml + .github/scripts/omr-convert.sh   Audiveris conversion
+omr/inbox, omr/out    conversion queue and results
 ```

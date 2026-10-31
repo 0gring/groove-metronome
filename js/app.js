@@ -1,8 +1,10 @@
 import { AudioEngine, SOUNDS } from './audio.js';
-import { GROOVES, DRUM_ORDER, DRUM_LABELS } from './grooves.js';
+import { GROOVES, DRUM_ORDER, DRUM_LABELS, PROGRESSIONS } from './grooves.js';
 import {
-  QUALITIES, parseDrum, parseLine, parseComp, parseProg, generateMelody, resolveNote, cleanDrum, mod, lcm,
+  QUALITIES, parseDrum, parseLine, parseComp, parseProg, generateMelody, generateBass, resolveNote, cleanDrum, mod, lcm,
 } from './theory.js';
+import { Tuner } from './tuner.js';
+import { initPractice } from './practice.js';
 
 const $ = (id) => document.getElementById(id);
 const audio = new AudioEngine();
@@ -17,6 +19,21 @@ const LAYERS = [
 ];
 const HIT_NAMES = { '.': 'off', x: 'hit', X: 'accent', g: 'ghost', o: 'soft', r: 'roll', t: 'triplet roll' };
 const CYCLE = { '.': 'x', x: 'X', X: 'g', g: '.' };
+const DRUM_SETS = { full: null, ks: ['kick', 'snare', 'rim', 'clap'], k: ['kick'] };
+const STRINGS = { 4: { open: [43, 38, 33, 28], names: ['G', 'D', 'A', 'E'] }, 5: { open: [43, 38, 33, 28, 23], names: ['G', 'D', 'A', 'E', 'B'] } };
+const IV_NAMES = ['R', '♭2', '2', '♭3', '3', '4', '♭5', '5', '♭6', '6', '♭7', '7'];
+const SCALE = {
+  ionian: ['Major scale', [0, 2, 4, 5, 7, 9, 11]],
+  aeolian: ['Natural minor', [0, 2, 3, 5, 7, 8, 10]],
+  dorian: ['Dorian', [0, 2, 3, 5, 7, 9, 10]],
+  mixo: ['Mixolydian', [0, 2, 4, 5, 7, 9, 10]],
+  locrian: ['Locrian', [0, 1, 3, 5, 6, 8, 10]],
+  dim: ['Diminished (W-H)', [0, 2, 3, 5, 6, 8, 9, 11]],
+};
+const SCALE_FOR = { '': 'ionian', maj7: 'ionian', 6: 'ionian', m: 'aeolian', m7: 'dorian', m9: 'dorian', m6: 'dorian', 7: 'mixo', 9: 'mixo', sus: 'mixo', 5: 'aeolian', m7b5: 'locrian', dim: 'dim' };
+const FRETS = 12;
+const SPEEDS = [50, 60, 70, 85, 100];
+const COUNTS = { 1: [''], 2: ['', '&'], 3: ['', '&', 'a'], 4: ['', 'e', '&', 'a'] };
 
 // ------------------------------------------------------------------ state
 
@@ -44,6 +61,15 @@ const DEFAULTS = {
   flash: false,
   vibrate: false,
   wake: true,
+  bassMode: 'play',
+  drumMode: 'full',
+  bassStyle: 'orig',
+  prog: 'default',
+  strings: 4,
+  fbMode: 'chord',
+  fbLabels: 'iv',
+  speed: 100,
+  speedAuto: { on: false, bars: 8 },
 };
 
 function merge(base, over) {
@@ -94,11 +120,63 @@ function buildGroove(def) {
     g.drumStr[k] = cleanDrum(s);
     g.drums[k] = parseDrum(s);
   }
-  g.bass = def.bass ? parseLine(def.bass) : null;
+  g.bass = makeBass(g);
   g.comp = def.chords ? parseComp(def.chords) : null;
   g.melody = def.melody ? parseLine(def.melody) : g.basic ? null : parseLine(generateMelody(g));
-  g.prog = parseProg(def.prog);
+  g.prog = makeProg(def);
+  if (piece) adaptForPiece(g);
   return g;
+}
+
+// Active imported piece (tab / MusicXML) being practised, and its loop range (0-based bars).
+let piece = null;
+const loop = { start: 0, end: 0 };
+const pieceBarOf = (bar) => loop.start + mod(bar, loop.end - loop.start + 1);
+
+/** In piece mode the groove only supplies drums/click; the piece supplies the notes. */
+function adaptForPiece(g) {
+  const def = g.def;
+  if (!def.basic && def.beats === piece.beats) {
+    g.backing = true;
+  } else if (!def.basic) {
+    g.drumStr = {};
+    g.drums = {};
+    g.sub = piece.beatType >= 8 ? 2 : 4;
+    g.accentBeats = piece.beats === 6 && piece.beatType === 8 ? [0, 3] : [0];
+  }
+  g.beats = piece.beats;
+  g.spb = g.beats * g.sub;
+  g.piece = true;
+  g.bass = null;
+  g.comp = null;
+  g.melody = null;
+  g.prog = parseProg(['0:']);
+}
+
+function makeBass(g) {
+  if (state.bassStyle === 'orig') return g.def.bass ? parseLine(g.def.bass) : null;
+  return parseLine(generateBass({ beats: g.beats, sub: g.sub, kick: g.drumStr.kick }, state.bassStyle));
+}
+
+function makeProg(def) {
+  const p = PROGRESSIONS.find((x) => x.id === state.prog);
+  return parseProg(p?.chords ?? def.prog);
+}
+
+// Bass note pitches. Range E1 (28) .. D#2 (39) for roots.
+function bassRootMidi(chord) {
+  const r = 24 + mod(state.key + chord.root, 12);
+  return r < 28 ? r + 12 : r;
+}
+
+function bassNoteMidi(note, bar) {
+  const prog = cur.prog;
+  const chord = prog[mod(bar, prog.length)];
+  if (note.approach) {
+    const target = bassRootMidi(prog[mod(bar + 1, prog.length)]);
+    return target - 1 >= 28 ? target - 1 : target + 1;
+  }
+  return bassRootMidi(chord) + resolveNote(note, chord.q);
 }
 
 let cur = buildGroove(grooveDef(state.grooveId));
@@ -122,7 +200,8 @@ const timer = new Worker(
 );
 timer.onmessage = tick;
 
-const stepDur = () => 60 / state.bpm / cur.sub;
+const playBpm = () => (state.bpm * state.speed) / 100;
+const stepDur = () => 60 / playBpm() / cur.sub;
 
 function tick() {
   if (!sched.playing) return;
@@ -149,6 +228,10 @@ function scheduleStep(bar, s, t) {
   if (s === 0 && bar > 0 && tr.on && bar % tr.every === 0 && state.bpm < tr.target) {
     setBpm(Math.min(tr.target, state.bpm + tr.inc));
   }
+  const sa = state.speedAuto;
+  if (s === 0 && bar > 0 && sa.on && state.speed < 100 && bar % sa.bars === 0) {
+    setSpeed(SPEEDS.find((v) => v > state.speed) ?? 100);
+  }
 
   const sd = stepDur();
   let tt = t;
@@ -168,6 +251,18 @@ function scheduleStep(bar, s, t) {
   const abs = bar * g.spb + s;
   ev.col = abs % g.displayLen;
   ev.chordIdx = bar % g.prog.length;
+  ev.yourTurn = state.bassMode === 'mute' || (state.bassMode === 'call' && bar % 2 === 1);
+  if (g.bass) {
+    ev.bassPos = abs % g.bass.length;
+    const barsPerPat = g.bass.length / g.spb;
+    ev.bassStart = bar - (bar % barsPerPat);
+  }
+  if (g.piece && piece) {
+    ev.pieceBar = pieceBarOf(bar);
+    ev.pieceBeat = s / g.sub;
+    const sounding = (piece.byBar[ev.pieceBar] ?? []).filter((n) => !n.dead && n.beat <= ev.pieceBeat + 1e-6 && n.beat + n.dur > ev.pieceBeat + 1e-6);
+    ev.pieceNote = sounding.length ? sounding[sounding.length - 1] : null;
+  }
   visQ.push(ev);
   if (ev.muted) return;
 
@@ -182,7 +277,9 @@ function scheduleStep(bar, s, t) {
   }
 
   if (L.drums.on) {
+    const only = DRUM_SETS[state.drumMode];
     for (const [name, arr] of Object.entries(g.drums)) {
+      if (only && !only.includes(name)) continue;
       const h = arr[abs % arr.length];
       if (!h) continue;
       if (h.n === 1) audio.drum(name, at(tt), vj(h.v));
@@ -193,12 +290,25 @@ function scheduleStep(bar, s, t) {
   const chord = g.prog[bar % g.prog.length];
   const pc = mod(state.key + chord.root, 12);
 
-  if (L.bass.on && g.bass) {
+  if (L.bass.on && g.bass && !ev.yourTurn) {
     const e = g.bass.events[abs % g.bass.length];
-    if (e) {
-      let root = 24 + pc;
-      if (root < 28) root += 12;
-      audio.bass(at(tt), root + resolveNote(e.note, chord.q), e.len * sd * 0.92, vj(0.85), soundFor('bass'), e.note.dead);
+    if (e) audio.bass(at(tt), bassNoteMidi(e.note, bar), e.len * sd * 0.92, vj(0.85), soundFor('bass'), e.note.dead);
+  }
+
+  if (g.piece && piece) {
+    const pb = pieceBarOf(bar);
+    const from = s / g.sub;
+    const to = (s + 1) / g.sub;
+    const beatSec = 60 / playBpm();
+    const layer = piece.layer;
+    if (L[layer].on && !ev.yourTurn) {
+      for (const n of piece.byBar[pb] ?? []) {
+        if (n.beat < from - 1e-6 || n.beat >= to - 1e-6) continue;
+        const nt = at(t + (n.beat - from) * beatSec);
+        const dur = n.dur * beatSec * 0.92;
+        if (layer === 'bass') audio.bass(nt, n.midi, dur, vj(0.85), soundFor('bass'), n.dead);
+        else if (!n.dead) audio.melody(nt, n.midi, dur, vj(0.8), soundFor('melody'));
+      }
     }
   }
 
@@ -245,6 +355,10 @@ function stop() {
   visQ.length = 0;
   highlightCol(-1);
   showBeat(-1);
+  highlightTab(-1);
+  lastChordBar = null;
+  showChordNow(0);
+  practice.onStop();
   updatePlayUI();
   releaseWake();
   setStatus('');
@@ -266,15 +380,28 @@ function frame() {
   while (visQ.length && visQ[0].t <= now) {
     last = visQ.shift();
     if (last.onBeat) beatFx(last);
+    if (last.s === 0 && !last.countIn) practice.onBar(last.bar);
   }
   if (!last) return;
   highlightCol(last.gen === gridGen && !last.countIn ? last.col : -1);
-  if (!last.countIn) highlightChord(last.chordIdx);
+  if (!last.countIn) {
+    highlightChord(last.chordIdx);
+    showChordNow(last.bar);
+    if (last.pieceBar !== undefined && piece) {
+      practice.onStep(last);
+      lightFret(fretPosFor(last.pieceNote));
+    }
+    if (cur.bass && last.bassPos !== undefined && last.gen === gridGen) {
+      if (last.bassStart !== tabStart || tabGen !== gridGen) renderTab(last.bassStart);
+      highlightTab(last.bassPos);
+    }
+  }
 
   let key;
   let msg;
   if (last.countIn) [key, msg] = ['count', 'Count-in…'];
   else if (last.muted) [key, msg] = ['gap', 'Silent bars — keep the time!'];
+  else if (state.bassMode === 'call') [key, msg] = last.yourTurn ? ['you', 'Your turn — play it back'] : ['app', 'Listen…'];
   else if (state.trainer.on) [key, msg] = [`tr${state.bpm}`, `Tempo trainer: ${state.bpm} → ${state.trainer.target} BPM`];
   else [key, msg] = ['play', 'Playing'];
   if (key !== lastStatusKey) {
@@ -327,7 +454,7 @@ function updatePlayUI() {
 
 const QUALITY_NAMES = { '': '', m: 'm', 5: '5', 7: '7', m7: 'm7', maj7: 'maj7', m7b5: 'm7♭5', dim: '°', sus: 'sus4', 6: '6', m6: 'm6', 9: '9', m9: 'm9' };
 const chordName = (c) => KEYS[mod(state.key + c.root, 12)] + QUALITY_NAMES[c.q];
-const tokLabel = (tok) => tok.replace('b', '♭').replace('#', '♯').replace('^', '↑').replace('_', '↓');
+const tokLabel = (tok) => (tok === 'A' ? '→' : tok).replace('b', '♭').replace('#', '♯').replace('^', '↑').replace('_', '↓');
 
 function renderGroove() {
   const g = cur;
@@ -353,6 +480,259 @@ function renderGroove() {
   renderGrid();
   renderChordLine();
   renderMixerDefaults();
+  renderBassPanel();
+}
+
+// ------------------------------------------------------------------ bass panel
+
+let tabCols = [];
+let tabStart = -1;
+let tabGen = -1;
+let lastChordBar = null;
+
+function renderBassPanel() {
+  $('bassStyle').value = state.bassStyle;
+  $('bassStyle').options[0].disabled = !cur.def.bass;
+  lastChordBar = null;
+  showChordNow(0);
+  renderTab(0);
+}
+
+function showChordNow(bar) {
+  if (bar === lastChordBar) return;
+  lastChordBar = bar;
+  if (piece) {
+    renderPieceFretboard(pieceBarOf(bar));
+    return;
+  }
+  const p = cur.prog;
+  $('chordNow').textContent = chordName(p[mod(bar, p.length)]);
+  $('chordNext').textContent = p.length > 1 ? chordName(p[mod(bar + 1, p.length)]) : '—';
+  renderFretboard(p[mod(bar, p.length)]);
+}
+
+// ------------------------------------------------------------------ fretboard
+
+let fbCells = {};
+let litFret = null;
+
+function renderFretboard(chord) {
+  const rootPc = mod(state.key + chord.root, 12);
+  const chordIv = QUALITIES[chord.q] ?? QUALITIES[''];
+  const tones = new Set(chordIv.map((i) => mod(i, 12)));
+  const minorish = chordIv[1] === 3 || chord.q === '5';
+  const [scaleName, scale] = SCALE[SCALE_FOR[chord.q] ?? 'ionian'];
+  const pent = minorish ? [0, 3, 5, 7, 10] : [0, 2, 4, 7, 9];
+
+  let shown;
+  let what;
+  if (state.fbMode === 'scale') {
+    shown = new Set([...scale, ...tones]);
+    what = `chord tones + ${scaleName}`;
+  } else if (state.fbMode === 'pent') {
+    shown = new Set(pent);
+    what = `${minorish ? 'minor' : 'major'} pentatonic`;
+  } else {
+    shown = tones;
+    what = 'chord tones';
+  }
+  const ivLabel = (iv) => (iv === 2 && chordIv.includes(14) ? '9' : IV_NAMES[iv]);
+
+  const cap = $('fbCaption');
+  cap.replaceChildren(chordName(chord) + ' ');
+  const sp = document.createElement('span');
+  sp.textContent = `— ${what}`;
+  cap.append(sp);
+
+  drawFretboard((si, f, pc) => {
+    const iv = mod(pc - rootPc, 12);
+    return [!shown.has(iv) ? '' : iv === 0 ? 'root' : tones.has(iv) ? 'ct' : 'sc', state.fbLabels === 'notes' ? KEYS[pc] : ivLabel(iv)];
+  });
+  const list = [...shown].sort((a, b) => a - b).map((iv) => KEYS[mod(rootPc + iv, 12)]);
+  $('fretboard').setAttribute('aria-label', `Fretboard, ${chordName(chord)} ${what}: ${list.join(', ')}`);
+}
+
+/** Build the fretboard grid; dotFor(si, fret, pitchClass) returns [class, label]. */
+function drawFretboard(dotFor) {
+  const { open, names } = STRINGS[state.strings];
+  fbCells = {};
+  litFret = null;
+  const frag = document.createDocumentFragment();
+  const div = (cls, text = '') => {
+    const d = document.createElement('div');
+    d.className = cls;
+    d.textContent = text;
+    frag.append(d);
+    return d;
+  };
+  open.forEach((o, si) => {
+    div('flab', names[si]);
+    for (let f = 0; f <= FRETS; f++) {
+      const pc = mod(o + f, 12);
+      const cell = div('fcell' + (f === 0 ? ' open' : f === FRETS ? ' f12' : ''));
+      const [cls, label] = dotFor(si, f, pc);
+      const dot = document.createElement('span');
+      dot.className = 'dot' + (cls ? ` ${cls}` : '');
+      dot.textContent = label;
+      cell.append(dot);
+      fbCells[`${si}:${f}`] = cell;
+    }
+  });
+  div('fmark');
+  for (let f = 0; f <= FRETS; f++) div('fmark', [3, 5, 7, 9].includes(f) ? '•' : f === 12 ? '••' : '');
+  $('fretboard').replaceChildren(frag);
+}
+
+/** Where a piece note sits on the displayed fretboard (uses the file's fingering when tunings match). */
+function fretPosFor(n) {
+  if (!n || !piece) return null;
+  const { open } = STRINGS[state.strings];
+  const same = piece.tuning.length === open.length && piece.tuning.every((m, i) => m === open[i]);
+  if (same && n.si !== null && n.si !== undefined && n.f !== null && n.f <= FRETS) return { si: n.si, f: n.f };
+  let best = null;
+  open.forEach((o, si) => {
+    const f = n.midi - o;
+    if (f >= 0 && f <= FRETS && (!best || f < best.f)) best = { si, f };
+  });
+  return best;
+}
+
+function renderPieceFretboard(pb) {
+  const notes = (piece.byBar[pb] ?? []).filter((n) => !n.dead);
+  const pos = new Set(notes.map(fretPosFor).filter(Boolean).map((p) => `${p.si}:${p.f}`));
+  drawFretboard((si, f, pc) => [pos.has(`${si}:${f}`) ? 'ct' : '', KEYS[pc]]);
+  const cap = $('fbCaption');
+  cap.replaceChildren(`Bar ${pb + 1} `);
+  const sp = document.createElement('span');
+  sp.textContent = '— notes in this bar';
+  cap.append(sp);
+  const names = [...new Set(notes.map((n) => KEYS[mod(n.midi, 12)]))];
+  $('fretboard').setAttribute('aria-label', `Fretboard, bar ${pb + 1}: ${names.join(', ') || 'rest'}`);
+}
+
+function lightFret(pos) {
+  const next = pos ? fbCells[`${pos.si}:${pos.f}`] ?? null : null;
+  if (next === litFret) return;
+  litFret?.classList.remove('playing');
+  next?.classList.add('playing');
+  litFret = next;
+}
+
+function refreshFretboard() {
+  const bar = lastChordBar ?? 0;
+  lastChordBar = null;
+  showChordNow(bar);
+}
+
+/** Choose string & fret for each note, keeping the hand in one position where possible. */
+function renderTab(startBar) {
+  tabStart = startBar;
+  tabGen = gridGen;
+  tabCols = [];
+  tabPos = [];
+  litTab = null;
+  const el = $('tab');
+  el.replaceChildren();
+  const g = cur;
+  if (!g.bass) {
+    const p = document.createElement('p');
+    p.className = 'empty';
+    p.textContent = 'No bass line in this groove — pick a bass line style above.';
+    el.append(p);
+    el.setAttribute('aria-label', 'No bass line');
+    return;
+  }
+  const { open, names } = STRINGS[state.strings];
+  const lowest = open[open.length - 1];
+  const col = (cells, cls) => {
+    const c = document.createElement('div');
+    c.className = 'tcol' + (cls ? ` ${cls}` : '');
+    for (const [k, v] of cells) {
+      const sp = document.createElement('span');
+      sp.className = k;
+      if (k === 's') {
+        const b = document.createElement('b');
+        b.textContent = v;
+        if (v) sp.append(b);
+      } else sp.textContent = v;
+      c.append(sp);
+    }
+    el.append(c);
+    return c;
+  };
+  col([['nm', ''], ...names.map((n) => ['s', n]), ['ct', '']], 'lab');
+
+  // hand position from the first root: lowest string where it sits at fret 0..5
+  const root = bassRootMidi(g.prog[mod(startBar, g.prog.length)]);
+  let anchor = 0;
+  for (let si = open.length - 1; si >= 0; si--) {
+    const f = root - open[si];
+    if (f >= 0 && f <= 5) {
+      anchor = f;
+      break;
+    }
+  }
+  const cost = (f) => (f === 0 ? 1 : f < anchor - 1 ? (anchor - 1 - f) * 2 : f > anchor + 3 ? (f - anchor - 3) * 2 : 0);
+
+  const spoken = [];
+  let lastString = open.length - 2;
+  let sounding = null;
+  for (let i = 0; i < g.bass.length; i++) {
+    const bar = startBar + Math.floor(i / g.spb);
+    const e = g.bass.events[i];
+    const cells = open.map(() => ['s', '']);
+    let nm = '';
+    if (e?.note.dead) {
+      cells[lastString] = ['s', 'x'];
+      sounding = null;
+    } else if (e) {
+      let midi = bassNoteMidi(e.note, bar);
+      while (midi < lowest) midi += 12;
+      let best = null;
+      open.forEach((o, si) => {
+        const f = midi - o;
+        if (f < 0 || f > 20) return;
+        const c = cost(f) + (si === lastString ? -0.1 : 0);
+        if (!best || c < best.c) best = { si, f, c };
+      });
+      if (best) {
+        cells[best.si] = ['s', String(best.f)];
+        sounding = { si: best.si, f: best.f };
+        lastString = best.si;
+      }
+      nm = KEYS[mod(midi, 12)];
+      if (e.note.approach) cells.push(['ap', '']); // marker for styling
+      spoken.push(KEYS[mod(midi, 12)]);
+    }
+    const inBar = i % g.spb;
+    const beatNo = Math.floor(inBar / g.sub);
+    const ct = inBar % g.sub === 0 ? String(beatNo + 1) : COUNTS[g.sub]?.[inBar % g.sub] ?? '';
+    const cls = i > 0 && inBar === 0 ? 'bar-start' : i > 0 && inBar % g.sub === 0 ? 'beat-start' : '';
+    const approach = cells.length > open.length;
+    if (approach) cells.pop();
+    if (!e && g.bass.tokens[i] !== '-') sounding = null;
+    tabPos.push(sounding);
+    tabCols.push(col([['nm', nm], ...cells, ['ct', ct]], cls + (approach ? ' approach' : '')));
+  }
+  el.setAttribute('aria-label', `Bass tab. Notes: ${spoken.join(', ')}`);
+}
+
+let litTab = null;
+let tabPos = [];
+function highlightTab(i) {
+  lightFret(i >= 0 ? tabPos[i] : null);
+  const next = i >= 0 ? tabCols[i] ?? null : null;
+  if (next === litTab) return;
+  litTab?.classList.remove('now');
+  next?.classList.add('now');
+  litTab = next;
+}
+
+function refreshBass() {
+  cur.bass = makeBass(cur);
+  renderGrid();
+  renderBassPanel();
+  save();
 }
 
 function renderChordLine() {
@@ -510,7 +890,20 @@ function setBpm(v) {
   state.bpm = Math.max(30, Math.min(300, Math.round(v)));
   $('bpmOut').textContent = state.bpm;
   $('bpmSlider').value = state.bpm;
+  updateSpeedInfo();
   save();
+}
+
+function setSpeed(v) {
+  state.speed = v;
+  for (const b of $('speedBtns').children) b.setAttribute('aria-pressed', String(Number(b.dataset.speed) === v));
+  updateSpeedInfo();
+  save();
+}
+
+function updateSpeedInfo() {
+  $('speedInfo').textContent =
+    state.speed < 100 ? `Playing at ${Math.round(playBpm())} BPM — ${state.speed}% of ${state.bpm}` : '';
 }
 
 let taps = [];
@@ -546,7 +939,7 @@ function selectGroove(id) {
   state.grooveId = id;
   const def = grooveDef(id);
   state.swing = null;
-  setBpm(def.bpm);
+  if (!piece) setBpm(def.bpm);
   rebuild();
 }
 
@@ -663,6 +1056,7 @@ function init() {
   $('keySelect').onchange = (e) => {
     state.key = Number(e.target.value);
     renderChordLine();
+    renderBassPanel();
     save();
   };
   $('swing').oninput = (e) => {
@@ -694,6 +1088,141 @@ function init() {
     turnOnMelody();
     renderGrid();
   };
+
+  // bass player
+  $('bassMode').value = state.bassMode;
+  $('bassMode').onchange = (e) => {
+    state.bassMode = e.target.value;
+    save();
+  };
+  $('drumMode').value = state.drumMode;
+  $('drumMode').onchange = (e) => {
+    state.drumMode = e.target.value;
+    save();
+  };
+  $('bassStyle').onchange = (e) => {
+    state.bassStyle = e.target.value;
+    refreshBass();
+  };
+  $('newBass').onclick = () => {
+    state.bassStyle = 'random';
+    state.layers.bass.on = true;
+    renderMixer();
+    renderMixerDefaults();
+    refreshBass();
+  };
+  for (const p of PROGRESSIONS) $('progSelect').append(new Option(p.name, p.id));
+  $('progSelect').value = state.prog;
+  $('progSelect').onchange = (e) => {
+    state.prog = e.target.value;
+    cur.prog = makeProg(cur.def);
+    renderChordLine();
+    renderBassPanel();
+    save();
+  };
+  const setStrings = (n) => {
+    state.strings = n;
+    $('str4').setAttribute('aria-pressed', String(n === 4));
+    $('str5').setAttribute('aria-pressed', String(n === 5));
+    renderTab(Math.max(0, tabStart));
+    refreshFretboard();
+    save();
+  };
+  $('str4').onclick = () => setStrings(4);
+  $('str5').onclick = () => setStrings(5);
+  setStrings(state.strings);
+
+  // practice speed
+  for (const v of SPEEDS) {
+    const b = document.createElement('button');
+    b.className = 'toggle small';
+    b.dataset.speed = v;
+    b.textContent = `${v}%`;
+    b.setAttribute('aria-label', `${v} percent speed`);
+    b.onclick = () => setSpeed(v);
+    $('speedBtns').append(b);
+  }
+  $('speedAuto').checked = state.speedAuto.on;
+  $('speedAuto').onchange = (e) => {
+    state.speedAuto.on = e.target.checked;
+    save();
+  };
+  $('speedBars').value = state.speedAuto.bars;
+  $('speedBars').onchange = (e) => {
+    const v = Math.max(1, Math.min(32, Math.round(Number(e.target.value) || 8)));
+    state.speedAuto.bars = v;
+    e.target.value = v;
+    save();
+  };
+
+  // fretboard
+  $('fbMode').value = state.fbMode;
+  $('fbMode').onchange = (e) => {
+    state.fbMode = e.target.value;
+    refreshFretboard();
+    save();
+  };
+  const setLabels = (v) => {
+    state.fbLabels = v;
+    $('lblIv').setAttribute('aria-pressed', String(v === 'iv'));
+    $('lblNotes').setAttribute('aria-pressed', String(v === 'notes'));
+    refreshFretboard();
+    save();
+  };
+  $('lblIv').onclick = () => setLabels('iv');
+  $('lblNotes').onclick = () => setLabels('notes');
+  setLabels(state.fbLabels);
+
+  // tuner
+  [['B', 23], ['E', 28], ['A', 33], ['D', 38], ['G', 43]].forEach(([n, m]) => {
+    const b = document.createElement('button');
+    b.textContent = n;
+    b.setAttribute('aria-label', `Play ${n} string reference`);
+    b.onclick = async () => {
+      audio.init();
+      applyMix();
+      await audio.resume();
+      audio.bass(audio.now + 0.02, m, 2.2, 0.9, 'upright');
+    };
+    $('refRow').append(b);
+  });
+  const tuner = new Tuner(audio);
+  const tBtn = $('tunerBtn');
+  const showReading = (r) => {
+    const needle = $('needle');
+    if (!r) {
+      needle.classList.remove('on');
+      $('tunerCents').textContent = 'Play a string…';
+      return;
+    }
+    const inTune = Math.abs(r.cents) <= 4;
+    $('tunerNote').textContent = `${r.name}${r.octave}`;
+    $('tunerNote').classList.toggle('in-tune', inTune);
+    $('tunerCents').textContent = `${r.cents > 0 ? '+' : ''}${r.cents} cents · ${r.freq.toFixed(1)} Hz${inTune ? ' · in tune' : r.cents < 0 ? ' · tune up' : ' · tune down'}`;
+    needle.style.left = `${50 + Math.max(-50, Math.min(50, r.cents))}%`;
+    needle.classList.add('on');
+  };
+  tBtn.onclick = async () => {
+    if (tuner.running) {
+      tuner.stop();
+      tBtn.textContent = '🎤 Start mic tuner';
+      tBtn.setAttribute('aria-pressed', 'false');
+      $('tunerNote').textContent = '–';
+      $('tunerCents').textContent = '';
+      $('needle').classList.remove('on');
+      return;
+    }
+    try {
+      await tuner.start(showReading);
+      tBtn.textContent = '■ Stop tuner';
+      tBtn.setAttribute('aria-pressed', 'true');
+    } catch {
+      $('tunerCents').textContent = 'Microphone not available — allow mic access (needs https).';
+    }
+  };
+  $('tunerBox').addEventListener('toggle', () => {
+    if (!$('tunerBox').open && tuner.running) tBtn.click();
+  });
 
   // practice
   const bindCheck = (id, get, set) => {
@@ -759,7 +1288,40 @@ function init() {
   }
 
   setBpm(state.bpm ?? cur.def.bpm);
+  setSpeed(state.speed);
   renderGroove();
 }
+
+const practice = initPractice({
+  isPlaying: () => sched.playing,
+  setBpm,
+  /** Activate (or clear, with null) an imported piece; restarts playback from the loop start. */
+  setPiece(p, from = 0, to = null) {
+    const wasPlaying = sched.playing;
+    if (wasPlaying) stop();
+    piece = p;
+    if (p) {
+      p.byBar = Array.from({ length: p.bars }, () => []);
+      for (const n of p.notes) p.byBar[n.bar]?.push(n);
+      const sorted = p.notes.map((n) => n.midi).sort((a, b) => a - b);
+      p.layer = sorted[Math.floor(sorted.length / 2)] < 55 ? 'bass' : 'melody';
+      loop.start = Math.max(0, Math.min(from, p.bars - 1));
+      loop.end = Math.max(loop.start, Math.min(to ?? p.bars - 1, p.bars - 1));
+    }
+    document.body.classList.toggle('piece-mode', !!p);
+    cur = buildGroove(grooveDef(state.grooveId));
+    renderGroove();
+    lastChordBar = null;
+    showChordNow(0);
+    if (wasPlaying) start();
+  },
+  setLoop(from, to) {
+    loop.start = from;
+    loop.end = to;
+    lastChordBar = null;
+    showChordNow(0);
+  },
+  backingInfo: () => (!cur.piece ? '' : cur.def.basic ? 'Click' : cur.backing ? `${cur.def.name} drums` : `Click — “${cur.def.name}” is in a different meter`),
+});
 
 init();

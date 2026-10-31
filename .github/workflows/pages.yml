@@ -25,7 +25,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: node tests/grooves.test.mjs
+      - run: node tests/grooves.test.mjs && node tests/tuner.test.mjs && node tests/importers.test.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

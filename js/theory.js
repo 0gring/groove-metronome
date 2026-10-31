@@ -39,9 +39,11 @@ export function chordTones(quality) {
  *   1 b3 #4 5 8  fixed scale degrees relative to the chord root
  *   ^ / _        prefix: octave up / down (e.g. ^T, _5)
  *   x            dead (muted, percussive) note
+ *   A            approach note: a half step below the next bar's root (resolved by the player)
  */
 export function parseNoteToken(tok) {
   if (tok === 'x') return { dead: true, semi: 0 };
+  if (tok === 'A') return { approach: true, semi: 0 }; // chromatic approach into the next bar's root
   let oct = 0;
   while (tok[0] === '^' || tok[0] === '_') {
     oct += tok[0] === '^' ? 12 : -12;
@@ -170,4 +172,68 @@ export function generateMelody({ beats, sub, melDensity }, rng = Math.random) {
 export function lcm(a, b) {
   const gcd = (x, y) => (y ? gcd(y, x % y) : x);
   return (a * b) / gcd(a, b);
+}
+
+/**
+ * Generate a bass line in a given style. Returns a token string covering 1 bar
+ * (2 bars for short bars).
+ *   roots  - root on every beat
+ *   r58    - root, fifth, octave, fifth
+ *   kick   - rhythm locked to the kick drum
+ *   walk   - walking quarter notes with a chromatic approach into the next chord
+ *   random - kick-based groove with extra syncopations, octaves and dead notes
+ */
+export function generateBass({ beats, sub, kick }, style, rng = Math.random) {
+  const spb = beats * sub;
+  const len = spb <= 8 ? spb * 2 : spb;
+  const t = Array(len).fill('.');
+  const put = (pos, tok, l) => {
+    t[pos] = tok;
+    for (let k = 1; k < l && pos + k < len; k++) t[pos + k] = '-';
+  };
+  const nBeats = len / sub;
+  const pick = (arr) => arr[Math.floor(rng() * arr.length)];
+
+  if (style === 'roots') {
+    for (let b = 0; b < nBeats; b++) put(b * sub, 'R', sub);
+  } else if (style === 'r58') {
+    const seq = ['R', 'F', '8', 'F'];
+    for (let b = 0; b < nBeats; b++) put(b * sub, seq[(b % beats) % 4], sub);
+  } else if (style === 'walk') {
+    const mids = [['T', 'F'], ['2', 'T'], ['8', 'F'], ['F', '6'], ['T', '2'], ['S', 'F']];
+    for (let bar = 0; bar < len / spb; bar++) {
+      const m = pick(mids);
+      for (let b = 0; b < beats; b++) {
+        let tok = b === 0 ? 'R' : b === beats - 1 ? 'A' : m[(b - 1) % 2];
+        if (beats === 1) tok = 'R';
+        put(bar * spb + b * sub, tok, sub);
+      }
+    }
+  } else {
+    const on = new Set([0]);
+    for (let i = 0; i < len; i++) if (kick && kick[i % kick.length] !== '.') on.add(i);
+    if (on.size === 1) for (let b = 0; b < nBeats; b++) on.add(b * sub);
+    if (style === 'random') {
+      for (const i of [...on]) if (i !== 0 && rng() < 0.2) on.delete(i);
+      for (let i = 1; i < len; i++) if (!on.has(i) && rng() < (i % sub === 0 ? 0.25 : 0.14)) on.add(i);
+    }
+    const ons = [...on].sort((a, b) => a - b);
+    const cycle = ['R', 'R', '8', 'F'];
+    const pool = ['R', 'R', '8', 'F', 'S', 'T', '_S', '_F'];
+    ons.forEach((pos, n) => {
+      const gap = (ons[n + 1] ?? len) - pos;
+      const last = n === ons.length - 1 && pos >= len - sub;
+      let tok;
+      let l;
+      if (style === 'random') {
+        tok = n === 0 ? 'R' : last && rng() < 0.6 ? 'A' : sub === 4 && rng() < 0.12 ? 'x' : pick(pool);
+        l = tok === 'x' ? 1 : rng() < 0.5 ? gap : Math.min(gap, 1 + Math.floor(rng() * 2));
+      } else {
+        tok = n === 0 ? 'R' : last ? 'A' : cycle[n % cycle.length];
+        l = Math.min(gap, sub * 2);
+      }
+      put(pos, tok, l);
+    });
+  }
+  return t.join(' ');
 }
