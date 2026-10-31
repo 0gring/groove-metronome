@@ -39,6 +39,9 @@ and works offline. Every sound is synthesized live with the Web Audio API (no sa
 - **Live bass tab** (4- or 5-string) with note names and counting (1 e & a), following the chords and
   lighting up the current note. Fingerings keep your hand in one position.
 - **Now / Next chord** display, so you always see where you're heading.
+- **Fretboard view** (frets 0–12, 4 or 5 strings) for the current chord: root, chord tones, and optionally
+  the matching scale (Dorian for m7, Mixolydian for 7, …) or pentatonic, labelled as intervals or note
+  names. The note the bass is playing lights up live, so you see the line move across the neck.
 - **Bass line styles:** groove's own line, roots, root–5th–octave, *lock to the kick*, walking lines with
   chromatic approach notes, and 🎲 random groove lines.
 - **Drums: kick only / kick + snare** to practise locking in with the kick drum.

@@ -120,6 +120,26 @@
       <div class="tab-wrap"><div id="tab" class="tab" role="img"></div></div>
       <p class="hint"><span class="ap-key">Orange</span> = chromatic approach note leading into the next chord (→ in the grid). x = dead note.</p>
 
+      <div class="tab-head">
+        <h3>Fretboard</h3>
+        <div class="seg" role="group" aria-label="Fretboard labels">
+          <button id="lblIv" class="toggle small" aria-pressed="true">Intervals</button>
+          <button id="lblNotes" class="toggle small" aria-pressed="false">Notes</button>
+        </div>
+      </div>
+      <div class="field-row fb-row">
+        <label>Show
+          <select id="fbMode">
+            <option value="chord">Chord tones</option>
+            <option value="scale">Chord tones + scale</option>
+            <option value="pent">Pentatonic</option>
+          </select>
+        </label>
+      </div>
+      <p id="fbCaption" class="fb-caption"></p>
+      <div class="fb-wrap"><div id="fretboard" class="fretboard" role="img"></div></div>
+      <p class="hint"><span class="ap-key">Orange</span> = root, <span class="ct-key">teal</span> = chord tones, grey = scale. <span class="now-key">Yellow</span> = the note the bass is playing now.</p>
+
       <details id="tunerBox">
         <summary>Tuner &amp; reference notes</summary>
         <div class="ref-row" id="refRow" aria-label="Play reference string"></div>

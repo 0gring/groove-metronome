@@ -20,6 +20,17 @@ const HIT_NAMES = { '.': 'off', x: 'hit', X: 'accent', g: 'ghost', o: 'soft', r:
 const CYCLE = { '.': 'x', x: 'X', X: 'g', g: '.' };
 const DRUM_SETS = { full: null, ks: ['kick', 'snare', 'rim', 'clap'], k: ['kick'] };
 const STRINGS = { 4: { open: [43, 38, 33, 28], names: ['G', 'D', 'A', 'E'] }, 5: { open: [43, 38, 33, 28, 23], names: ['G', 'D', 'A', 'E', 'B'] } };
+const IV_NAMES = ['R', '♭2', '2', '♭3', '3', '4', '♭5', '5', '♭6', '6', '♭7', '7'];
+const SCALE = {
+  ionian: ['Major scale', [0, 2, 4, 5, 7, 9, 11]],
+  aeolian: ['Natural minor', [0, 2, 3, 5, 7, 8, 10]],
+  dorian: ['Dorian', [0, 2, 3, 5, 7, 9, 10]],
+  mixo: ['Mixolydian', [0, 2, 4, 5, 7, 9, 10]],
+  locrian: ['Locrian', [0, 1, 3, 5, 6, 8, 10]],
+  dim: ['Diminished (W-H)', [0, 2, 3, 5, 6, 8, 9, 11]],
+};
+const SCALE_FOR = { '': 'ionian', maj7: 'ionian', 6: 'ionian', m: 'aeolian', m7: 'dorian', m9: 'dorian', m6: 'dorian', 7: 'mixo', 9: 'mixo', sus: 'mixo', 5: 'aeolian', m7b5: 'locrian', dim: 'dim' };
+const FRETS = 12;
 const COUNTS = { 1: [''], 2: ['', '&'], 3: ['', '&', 'a'], 4: ['', 'e', '&', 'a'] };
 
 // ------------------------------------------------------------------ state
@@ -53,6 +64,8 @@ const DEFAULTS = {
   bassStyle: 'orig',
   prog: 'default',
   strings: 4,
+  fbMode: 'chord',
+  fbLabels: 'iv',
 };
 
 function merge(base, over) {
@@ -426,6 +439,87 @@ function showChordNow(bar) {
   const p = cur.prog;
   $('chordNow').textContent = chordName(p[mod(bar, p.length)]);
   $('chordNext').textContent = p.length > 1 ? chordName(p[mod(bar + 1, p.length)]) : '—';
+  renderFretboard(p[mod(bar, p.length)]);
+}
+
+// ------------------------------------------------------------------ fretboard
+
+let fbCells = {};
+let litFret = null;
+
+function renderFretboard(chord) {
+  const fb = $('fretboard');
+  const { open, names } = STRINGS[state.strings];
+  const rootPc = mod(state.key + chord.root, 12);
+  const chordIv = QUALITIES[chord.q] ?? QUALITIES[''];
+  const tones = new Set(chordIv.map((i) => mod(i, 12)));
+  const minorish = chordIv[1] === 3 || chord.q === '5';
+  const [scaleName, scale] = SCALE[SCALE_FOR[chord.q] ?? 'ionian'];
+  const pent = minorish ? [0, 3, 5, 7, 10] : [0, 2, 4, 7, 9];
+
+  let shown;
+  let what;
+  if (state.fbMode === 'scale') {
+    shown = new Set([...scale, ...tones]);
+    what = `chord tones + ${scaleName}`;
+  } else if (state.fbMode === 'pent') {
+    shown = new Set(pent);
+    what = `${minorish ? 'minor' : 'major'} pentatonic`;
+  } else {
+    shown = tones;
+    what = 'chord tones';
+  }
+  const ivLabel = (iv) => (iv === 2 && chordIv.includes(14) ? '9' : IV_NAMES[iv]);
+
+  const cap = $('fbCaption');
+  cap.replaceChildren(chordName(chord) + ' ');
+  const sp = document.createElement('span');
+  sp.textContent = `— ${what}`;
+  cap.append(sp);
+
+  fbCells = {};
+  litFret = null;
+  const frag = document.createDocumentFragment();
+  const div = (cls, text = '') => {
+    const d = document.createElement('div');
+    d.className = cls;
+    d.textContent = text;
+    frag.append(d);
+    return d;
+  };
+  open.forEach((o, si) => {
+    div('flab', names[si]);
+    for (let f = 0; f <= FRETS; f++) {
+      const pc = mod(o + f, 12);
+      const iv = mod(pc - rootPc, 12);
+      const cell = div('fcell' + (f === 0 ? ' open' : f === FRETS ? ' f12' : ''));
+      const dot = document.createElement('span');
+      dot.className = 'dot' + (!shown.has(iv) ? '' : iv === 0 ? ' root' : tones.has(iv) ? ' ct' : ' sc');
+      dot.textContent = state.fbLabels === 'notes' ? KEYS[pc] : ivLabel(iv);
+      cell.append(dot);
+      fbCells[`${si}:${f}`] = cell;
+    }
+  });
+  div('fmark');
+  for (let f = 0; f <= FRETS; f++) div('fmark', [3, 5, 7, 9].includes(f) ? '•' : f === 12 ? '••' : '');
+  fb.replaceChildren(frag);
+
+  const list = [...shown].sort((a, b) => a - b).map((iv) => KEYS[mod(rootPc + iv, 12)]);
+  fb.setAttribute('aria-label', `Fretboard, ${chordName(chord)} ${what}: ${list.join(', ')}`);
+}
+
+function lightFret(pos) {
+  const next = pos ? fbCells[`${pos.si}:${pos.f}`] ?? null : null;
+  if (next === litFret) return;
+  litFret?.classList.remove('playing');
+  next?.classList.add('playing');
+  litFret = next;
+}
+
+function refreshFretboard() {
+  const bar = lastChordBar ?? 0;
+  lastChordBar = null;
+  showChordNow(bar);
 }
 
 /** Choose string & fret for each note, keeping the hand in one position where possible. */
@@ -433,6 +527,7 @@ function renderTab(startBar) {
   tabStart = startBar;
   tabGen = gridGen;
   tabCols = [];
+  tabPos = [];
   litTab = null;
   const el = $('tab');
   el.replaceChildren();
@@ -479,6 +574,7 @@ function renderTab(startBar) {
 
   const spoken = [];
   let lastString = open.length - 2;
+  let sounding = null;
   for (let i = 0; i < g.bass.length; i++) {
     const bar = startBar + Math.floor(i / g.spb);
     const e = g.bass.events[i];
@@ -486,6 +582,7 @@ function renderTab(startBar) {
     let nm = '';
     if (e?.note.dead) {
       cells[lastString] = ['s', 'x'];
+      sounding = null;
     } else if (e) {
       let midi = bassNoteMidi(e.note, bar);
       while (midi < lowest) midi += 12;
@@ -498,6 +595,7 @@ function renderTab(startBar) {
       });
       if (best) {
         cells[best.si] = ['s', String(best.f)];
+        sounding = { si: best.si, f: best.f };
         lastString = best.si;
       }
       nm = KEYS[mod(midi, 12)];
@@ -510,13 +608,17 @@ function renderTab(startBar) {
     const cls = i > 0 && inBar === 0 ? 'bar-start' : i > 0 && inBar % g.sub === 0 ? 'beat-start' : '';
     const approach = cells.length > open.length;
     if (approach) cells.pop();
+    if (!e && g.bass.tokens[i] !== '-') sounding = null;
+    tabPos.push(sounding);
     tabCols.push(col([['nm', nm], ...cells, ['ct', ct]], cls + (approach ? ' approach' : '')));
   }
   el.setAttribute('aria-label', `Bass tab. Notes: ${spoken.join(', ')}`);
 }
 
 let litTab = null;
+let tabPos = [];
 function highlightTab(i) {
+  lightFret(i >= 0 ? tabPos[i] : null);
   const next = i >= 0 ? tabCols[i] ?? null : null;
   if (next === litTab) return;
   litTab?.classList.remove('now');
@@ -908,11 +1010,30 @@ function init() {
     $('str4').setAttribute('aria-pressed', String(n === 4));
     $('str5').setAttribute('aria-pressed', String(n === 5));
     renderTab(Math.max(0, tabStart));
+    refreshFretboard();
     save();
   };
   $('str4').onclick = () => setStrings(4);
   $('str5').onclick = () => setStrings(5);
   setStrings(state.strings);
+
+  // fretboard
+  $('fbMode').value = state.fbMode;
+  $('fbMode').onchange = (e) => {
+    state.fbMode = e.target.value;
+    refreshFretboard();
+    save();
+  };
+  const setLabels = (v) => {
+    state.fbLabels = v;
+    $('lblIv').setAttribute('aria-pressed', String(v === 'iv'));
+    $('lblNotes').setAttribute('aria-pressed', String(v === 'notes'));
+    refreshFretboard();
+    save();
+  };
+  $('lblIv').onclick = () => setLabels('iv');
+  $('lblNotes').onclick = () => setLabels('notes');
+  setLabels(state.fbLabels);
 
   // tuner
   [['B', 23], ['E', 28], ['A', 33], ['D', 38], ['G', 43]].forEach(([n, m]) => {
