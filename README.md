@@ -32,6 +32,20 @@ and works offline. Every sound is synthesized live with the Web Audio API (no sa
 - Groove changes while playing happen on the next bar line, so you stay in time.
 - Settings are remembered between sessions.
 
+## For bass players
+
+- **You play the bass:** set *The app's bass* to *Silent* — the line keeps showing in the tab and grid
+  while you play it — or *Call & response*: the app plays a bar, you play it back the next bar.
+- **Live bass tab** (4- or 5-string) with note names and counting (1 e & a), following the chords and
+  lighting up the current note. Fingerings keep your hand in one position.
+- **Now / Next chord** display, so you always see where you're heading.
+- **Bass line styles:** groove's own line, roots, root–5th–octave, *lock to the kick*, walking lines with
+  chromatic approach notes, and 🎲 random groove lines.
+- **Drums: kick only / kick + snare** to practise locking in with the kick drum.
+- **Chord changes:** swap in a one-chord vamp, I–IV–V, I–vi–IV–V, ii–V–I, minor, 12-bar blues or the
+  circle of 4ths (all 12 keys) over any groove.
+- **Bass tuner:** microphone tuner that tracks down to low B (5-string), plus reference notes B E A D G.
+
 ## Get it on Android
 
 1. Merge to `main`, then in the GitHub repo go to **Settings → Pages → Build and deployment → Source: GitHub Actions**.
@@ -49,6 +63,7 @@ Any static file server works (ES modules need http, not `file://`):
 ```sh
 python3 -m http.server 8000   # then open http://localhost:8000
 node tests/grooves.test.mjs   # validate groove data & theory helpers
+node tests/tuner.test.mjs     # pitch detector accuracy on synthetic bass notes
 ```
 
 ## Adding a groove
@@ -66,6 +81,7 @@ css/style.css         styles (mobile-first)
 js/app.js             scheduler, UI, practice tools
 js/audio.js           synthesized drum kit and instruments
 js/grooves.js         groove library
-js/theory.js          pattern parsers, chord theory, melody generator
+js/theory.js          pattern parsers, chord theory, melody & bass line generators
+js/tuner.js           microphone pitch detection for the tuner
 sw.js, manifest.webmanifest, icons/   PWA / offline / install
 ```

@@ -1,7 +1,7 @@
 // Run: node tests/grooves.test.mjs
 import assert from 'node:assert/strict';
-import { GROOVES, DRUM_ORDER } from '../js/grooves.js';
-import { parseDrum, parseLine, parseComp, parseProg, generateMelody, resolveNote, parseNoteToken } from '../js/theory.js';
+import { GROOVES, DRUM_ORDER, PROGRESSIONS } from '../js/grooves.js';
+import { parseDrum, parseLine, parseComp, parseProg, generateMelody, generateBass, resolveNote, parseNoteToken, cleanDrum } from '../js/theory.js';
 
 let n = 0;
 const ids = new Set();
@@ -24,8 +24,18 @@ for (const g of GROOVES) {
       assert.ok(line.events.filter(Boolean).length >= 3);
     }
   }
+  for (const style of ['roots', 'r58', 'kick', 'walk', 'random']) {
+    for (let i = 0; i < 20; i++) {
+      const kick = g.drums.kick ? cleanDrum(g.drums.kick) : undefined;
+      const line = parseLine(generateBass({ beats: g.beats, sub: g.sub, kick }, style));
+      check(`bass ${style}`, line.length);
+      assert.ok(line.events[0], `${g.id} ${style}: bass must start on beat 1`);
+    }
+  }
   n++;
 }
+for (const p of PROGRESSIONS) if (p.chords) parseProg(p.chords);
+assert.ok(parseNoteToken('A').approach);
 assert.equal(resolveNote(parseNoteToken('T'), 'm7'), 3);
 assert.equal(resolveNote(parseNoteToken('T'), '7'), 4);
 assert.equal(resolveNote(parseNoteToken('S'), 'maj7'), 11);

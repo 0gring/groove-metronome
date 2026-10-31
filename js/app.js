@@ -1,8 +1,9 @@
 import { AudioEngine, SOUNDS } from './audio.js';
-import { GROOVES, DRUM_ORDER, DRUM_LABELS } from './grooves.js';
+import { GROOVES, DRUM_ORDER, DRUM_LABELS, PROGRESSIONS } from './grooves.js';
 import {
-  QUALITIES, parseDrum, parseLine, parseComp, parseProg, generateMelody, resolveNote, cleanDrum, mod, lcm,
+  QUALITIES, parseDrum, parseLine, parseComp, parseProg, generateMelody, generateBass, resolveNote, cleanDrum, mod, lcm,
 } from './theory.js';
+import { Tuner } from './tuner.js';
 
 const $ = (id) => document.getElementById(id);
 const audio = new AudioEngine();
@@ -17,6 +18,9 @@ const LAYERS = [
 ];
 const HIT_NAMES = { '.': 'off', x: 'hit', X: 'accent', g: 'ghost', o: 'soft', r: 'roll', t: 'triplet roll' };
 const CYCLE = { '.': 'x', x: 'X', X: 'g', g: '.' };
+const DRUM_SETS = { full: null, ks: ['kick', 'snare', 'rim', 'clap'], k: ['kick'] };
+const STRINGS = { 4: { open: [43, 38, 33, 28], names: ['G', 'D', 'A', 'E'] }, 5: { open: [43, 38, 33, 28, 23], names: ['G', 'D', 'A', 'E', 'B'] } };
+const COUNTS = { 1: [''], 2: ['', '&'], 3: ['', '&', 'a'], 4: ['', 'e', '&', 'a'] };
 
 // ------------------------------------------------------------------ state
 
@@ -44,6 +48,11 @@ const DEFAULTS = {
   flash: false,
   vibrate: false,
   wake: true,
+  bassMode: 'play',
+  drumMode: 'full',
+  bassStyle: 'orig',
+  prog: 'default',
+  strings: 4,
 };
 
 function merge(base, over) {
@@ -94,11 +103,37 @@ function buildGroove(def) {
     g.drumStr[k] = cleanDrum(s);
     g.drums[k] = parseDrum(s);
   }
-  g.bass = def.bass ? parseLine(def.bass) : null;
+  g.bass = makeBass(g);
   g.comp = def.chords ? parseComp(def.chords) : null;
   g.melody = def.melody ? parseLine(def.melody) : g.basic ? null : parseLine(generateMelody(g));
-  g.prog = parseProg(def.prog);
+  g.prog = makeProg(def);
   return g;
+}
+
+function makeBass(g) {
+  if (state.bassStyle === 'orig') return g.def.bass ? parseLine(g.def.bass) : null;
+  return parseLine(generateBass({ beats: g.beats, sub: g.sub, kick: g.drumStr.kick }, state.bassStyle));
+}
+
+function makeProg(def) {
+  const p = PROGRESSIONS.find((x) => x.id === state.prog);
+  return parseProg(p?.chords ?? def.prog);
+}
+
+// Bass note pitches. Range E1 (28) .. D#2 (39) for roots.
+function bassRootMidi(chord) {
+  const r = 24 + mod(state.key + chord.root, 12);
+  return r < 28 ? r + 12 : r;
+}
+
+function bassNoteMidi(note, bar) {
+  const prog = cur.prog;
+  const chord = prog[mod(bar, prog.length)];
+  if (note.approach) {
+    const target = bassRootMidi(prog[mod(bar + 1, prog.length)]);
+    return target - 1 >= 28 ? target - 1 : target + 1;
+  }
+  return bassRootMidi(chord) + resolveNote(note, chord.q);
 }
 
 let cur = buildGroove(grooveDef(state.grooveId));
@@ -168,6 +203,12 @@ function scheduleStep(bar, s, t) {
   const abs = bar * g.spb + s;
   ev.col = abs % g.displayLen;
   ev.chordIdx = bar % g.prog.length;
+  ev.yourTurn = state.bassMode === 'mute' || (state.bassMode === 'call' && bar % 2 === 1);
+  if (g.bass) {
+    ev.bassPos = abs % g.bass.length;
+    const barsPerPat = g.bass.length / g.spb;
+    ev.bassStart = bar - (bar % barsPerPat);
+  }
   visQ.push(ev);
   if (ev.muted) return;
 
@@ -182,7 +223,9 @@ function scheduleStep(bar, s, t) {
   }
 
   if (L.drums.on) {
+    const only = DRUM_SETS[state.drumMode];
     for (const [name, arr] of Object.entries(g.drums)) {
+      if (only && !only.includes(name)) continue;
       const h = arr[abs % arr.length];
       if (!h) continue;
       if (h.n === 1) audio.drum(name, at(tt), vj(h.v));
@@ -193,13 +236,9 @@ function scheduleStep(bar, s, t) {
   const chord = g.prog[bar % g.prog.length];
   const pc = mod(state.key + chord.root, 12);
 
-  if (L.bass.on && g.bass) {
+  if (L.bass.on && g.bass && !ev.yourTurn) {
     const e = g.bass.events[abs % g.bass.length];
-    if (e) {
-      let root = 24 + pc;
-      if (root < 28) root += 12;
-      audio.bass(at(tt), root + resolveNote(e.note, chord.q), e.len * sd * 0.92, vj(0.85), soundFor('bass'), e.note.dead);
-    }
+    if (e) audio.bass(at(tt), bassNoteMidi(e.note, bar), e.len * sd * 0.92, vj(0.85), soundFor('bass'), e.note.dead);
   }
 
   if (L.chords.on && g.comp) {
@@ -245,6 +284,8 @@ function stop() {
   visQ.length = 0;
   highlightCol(-1);
   showBeat(-1);
+  highlightTab(-1);
+  showChordNow(0);
   updatePlayUI();
   releaseWake();
   setStatus('');
@@ -269,12 +310,20 @@ function frame() {
   }
   if (!last) return;
   highlightCol(last.gen === gridGen && !last.countIn ? last.col : -1);
-  if (!last.countIn) highlightChord(last.chordIdx);
+  if (!last.countIn) {
+    highlightChord(last.chordIdx);
+    showChordNow(last.bar);
+    if (cur.bass && last.bassPos !== undefined && last.gen === gridGen) {
+      if (last.bassStart !== tabStart || tabGen !== gridGen) renderTab(last.bassStart);
+      highlightTab(last.bassPos);
+    }
+  }
 
   let key;
   let msg;
   if (last.countIn) [key, msg] = ['count', 'Count-in…'];
   else if (last.muted) [key, msg] = ['gap', 'Silent bars — keep the time!'];
+  else if (state.bassMode === 'call') [key, msg] = last.yourTurn ? ['you', 'Your turn — play it back'] : ['app', 'Listen…'];
   else if (state.trainer.on) [key, msg] = [`tr${state.bpm}`, `Tempo trainer: ${state.bpm} → ${state.trainer.target} BPM`];
   else [key, msg] = ['play', 'Playing'];
   if (key !== lastStatusKey) {
@@ -327,7 +376,7 @@ function updatePlayUI() {
 
 const QUALITY_NAMES = { '': '', m: 'm', 5: '5', 7: '7', m7: 'm7', maj7: 'maj7', m7b5: 'm7♭5', dim: '°', sus: 'sus4', 6: '6', m6: 'm6', 9: '9', m9: 'm9' };
 const chordName = (c) => KEYS[mod(state.key + c.root, 12)] + QUALITY_NAMES[c.q];
-const tokLabel = (tok) => tok.replace('b', '♭').replace('#', '♯').replace('^', '↑').replace('_', '↓');
+const tokLabel = (tok) => (tok === 'A' ? '→' : tok).replace('b', '♭').replace('#', '♯').replace('^', '↑').replace('_', '↓');
 
 function renderGroove() {
   const g = cur;
@@ -353,6 +402,133 @@ function renderGroove() {
   renderGrid();
   renderChordLine();
   renderMixerDefaults();
+  renderBassPanel();
+}
+
+// ------------------------------------------------------------------ bass panel
+
+let tabCols = [];
+let tabStart = -1;
+let tabGen = -1;
+let lastChordBar = null;
+
+function renderBassPanel() {
+  $('bassStyle').value = state.bassStyle;
+  $('bassStyle').options[0].disabled = !cur.def.bass;
+  lastChordBar = null;
+  showChordNow(0);
+  renderTab(0);
+}
+
+function showChordNow(bar) {
+  if (bar === lastChordBar) return;
+  lastChordBar = bar;
+  const p = cur.prog;
+  $('chordNow').textContent = chordName(p[mod(bar, p.length)]);
+  $('chordNext').textContent = p.length > 1 ? chordName(p[mod(bar + 1, p.length)]) : '—';
+}
+
+/** Choose string & fret for each note, keeping the hand in one position where possible. */
+function renderTab(startBar) {
+  tabStart = startBar;
+  tabGen = gridGen;
+  tabCols = [];
+  litTab = null;
+  const el = $('tab');
+  el.replaceChildren();
+  const g = cur;
+  if (!g.bass) {
+    const p = document.createElement('p');
+    p.className = 'empty';
+    p.textContent = 'No bass line in this groove — pick a bass line style above.';
+    el.append(p);
+    el.setAttribute('aria-label', 'No bass line');
+    return;
+  }
+  const { open, names } = STRINGS[state.strings];
+  const lowest = open[open.length - 1];
+  const col = (cells, cls) => {
+    const c = document.createElement('div');
+    c.className = 'tcol' + (cls ? ` ${cls}` : '');
+    for (const [k, v] of cells) {
+      const sp = document.createElement('span');
+      sp.className = k;
+      if (k === 's') {
+        const b = document.createElement('b');
+        b.textContent = v;
+        if (v) sp.append(b);
+      } else sp.textContent = v;
+      c.append(sp);
+    }
+    el.append(c);
+    return c;
+  };
+  col([['nm', ''], ...names.map((n) => ['s', n]), ['ct', '']], 'lab');
+
+  // hand position from the first root: lowest string where it sits at fret 0..5
+  const root = bassRootMidi(g.prog[mod(startBar, g.prog.length)]);
+  let anchor = 0;
+  for (let si = open.length - 1; si >= 0; si--) {
+    const f = root - open[si];
+    if (f >= 0 && f <= 5) {
+      anchor = f;
+      break;
+    }
+  }
+  const cost = (f) => (f === 0 ? 1 : f < anchor - 1 ? (anchor - 1 - f) * 2 : f > anchor + 3 ? (f - anchor - 3) * 2 : 0);
+
+  const spoken = [];
+  let lastString = open.length - 2;
+  for (let i = 0; i < g.bass.length; i++) {
+    const bar = startBar + Math.floor(i / g.spb);
+    const e = g.bass.events[i];
+    const cells = open.map(() => ['s', '']);
+    let nm = '';
+    if (e?.note.dead) {
+      cells[lastString] = ['s', 'x'];
+    } else if (e) {
+      let midi = bassNoteMidi(e.note, bar);
+      while (midi < lowest) midi += 12;
+      let best = null;
+      open.forEach((o, si) => {
+        const f = midi - o;
+        if (f < 0 || f > 20) return;
+        const c = cost(f) + (si === lastString ? -0.1 : 0);
+        if (!best || c < best.c) best = { si, f, c };
+      });
+      if (best) {
+        cells[best.si] = ['s', String(best.f)];
+        lastString = best.si;
+      }
+      nm = KEYS[mod(midi, 12)];
+      if (e.note.approach) cells.push(['ap', '']); // marker for styling
+      spoken.push(KEYS[mod(midi, 12)]);
+    }
+    const inBar = i % g.spb;
+    const beatNo = Math.floor(inBar / g.sub);
+    const ct = inBar % g.sub === 0 ? String(beatNo + 1) : COUNTS[g.sub]?.[inBar % g.sub] ?? '';
+    const cls = i > 0 && inBar === 0 ? 'bar-start' : i > 0 && inBar % g.sub === 0 ? 'beat-start' : '';
+    const approach = cells.length > open.length;
+    if (approach) cells.pop();
+    tabCols.push(col([['nm', nm], ...cells, ['ct', ct]], cls + (approach ? ' approach' : '')));
+  }
+  el.setAttribute('aria-label', `Bass tab. Notes: ${spoken.join(', ')}`);
+}
+
+let litTab = null;
+function highlightTab(i) {
+  const next = i >= 0 ? tabCols[i] ?? null : null;
+  if (next === litTab) return;
+  litTab?.classList.remove('now');
+  next?.classList.add('now');
+  litTab = next;
+}
+
+function refreshBass() {
+  cur.bass = makeBass(cur);
+  renderGrid();
+  renderBassPanel();
+  save();
 }
 
 function renderChordLine() {
@@ -663,6 +839,7 @@ function init() {
   $('keySelect').onchange = (e) => {
     state.key = Number(e.target.value);
     renderChordLine();
+    renderBassPanel();
     save();
   };
   $('swing').oninput = (e) => {
@@ -694,6 +871,99 @@ function init() {
     turnOnMelody();
     renderGrid();
   };
+
+  // bass player
+  $('bassMode').value = state.bassMode;
+  $('bassMode').onchange = (e) => {
+    state.bassMode = e.target.value;
+    save();
+  };
+  $('drumMode').value = state.drumMode;
+  $('drumMode').onchange = (e) => {
+    state.drumMode = e.target.value;
+    save();
+  };
+  $('bassStyle').onchange = (e) => {
+    state.bassStyle = e.target.value;
+    refreshBass();
+  };
+  $('newBass').onclick = () => {
+    state.bassStyle = 'random';
+    state.layers.bass.on = true;
+    renderMixer();
+    renderMixerDefaults();
+    refreshBass();
+  };
+  for (const p of PROGRESSIONS) $('progSelect').append(new Option(p.name, p.id));
+  $('progSelect').value = state.prog;
+  $('progSelect').onchange = (e) => {
+    state.prog = e.target.value;
+    cur.prog = makeProg(cur.def);
+    renderChordLine();
+    renderBassPanel();
+    save();
+  };
+  const setStrings = (n) => {
+    state.strings = n;
+    $('str4').setAttribute('aria-pressed', String(n === 4));
+    $('str5').setAttribute('aria-pressed', String(n === 5));
+    renderTab(Math.max(0, tabStart));
+    save();
+  };
+  $('str4').onclick = () => setStrings(4);
+  $('str5').onclick = () => setStrings(5);
+  setStrings(state.strings);
+
+  // tuner
+  [['B', 23], ['E', 28], ['A', 33], ['D', 38], ['G', 43]].forEach(([n, m]) => {
+    const b = document.createElement('button');
+    b.textContent = n;
+    b.setAttribute('aria-label', `Play ${n} string reference`);
+    b.onclick = async () => {
+      audio.init();
+      applyMix();
+      await audio.resume();
+      audio.bass(audio.now + 0.02, m, 2.2, 0.9, 'upright');
+    };
+    $('refRow').append(b);
+  });
+  const tuner = new Tuner(audio);
+  const tBtn = $('tunerBtn');
+  const showReading = (r) => {
+    const needle = $('needle');
+    if (!r) {
+      needle.classList.remove('on');
+      $('tunerCents').textContent = 'Play a string…';
+      return;
+    }
+    const inTune = Math.abs(r.cents) <= 4;
+    $('tunerNote').textContent = `${r.name}${r.octave}`;
+    $('tunerNote').classList.toggle('in-tune', inTune);
+    $('tunerCents').textContent = `${r.cents > 0 ? '+' : ''}${r.cents} cents · ${r.freq.toFixed(1)} Hz${inTune ? ' · in tune' : r.cents < 0 ? ' · tune up' : ' · tune down'}`;
+    needle.style.left = `${50 + Math.max(-50, Math.min(50, r.cents))}%`;
+    needle.classList.add('on');
+  };
+  tBtn.onclick = async () => {
+    if (tuner.running) {
+      tuner.stop();
+      tBtn.textContent = '🎤 Start mic tuner';
+      tBtn.setAttribute('aria-pressed', 'false');
+      $('tunerNote').textContent = '–';
+      $('tunerCents').textContent = '';
+      $('needle').classList.remove('on');
+      return;
+    }
+    try {
+      await tuner.start(showReading);
+      tBtn.textContent = '■ Stop tuner';
+      tBtn.setAttribute('aria-pressed', 'true');
+    } catch {
+      $('tunerCents').textContent = 'Microphone not available — allow mic access (needs https).';
+    }
+  };
+  $('tunerBox').addEventListener('toggle', () => {
+    if (!$('tunerBox').open && tuner.running) tBtn.click();
+  });
 
   // practice
   const bindCheck = (id, get, set) => {

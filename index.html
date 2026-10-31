@@ -66,6 +66,72 @@
       <p id="status" class="status" aria-live="polite"></p>
     </section>
 
+    <!-- Bass player tools -->
+    <section class="card bass-card" aria-labelledby="bassLabel">
+      <h2 id="bassLabel">Bass player</h2>
+
+      <div class="chord-now" aria-live="off">
+        <div><span class="lbl">Now</span><span id="chordNow" class="chord-big"></span></div>
+        <div><span class="lbl">Next</span><span id="chordNext" class="chord-next"></span></div>
+      </div>
+
+      <div class="field-row">
+        <label>The app's bass
+          <select id="bassMode">
+            <option value="play">Plays along</option>
+            <option value="mute">Silent (you play)</option>
+            <option value="call">Call &amp; response</option>
+          </select>
+        </label>
+        <label>Drums
+          <select id="drumMode">
+            <option value="full">Full kit</option>
+            <option value="ks">Kick + snare</option>
+            <option value="k">Kick only</option>
+          </select>
+        </label>
+      </div>
+      <div class="field-row">
+        <label>Bass line
+          <select id="bassStyle">
+            <option value="orig">Groove's own line</option>
+            <option value="roots">Roots on the beat</option>
+            <option value="r58">Root – 5th – octave</option>
+            <option value="kick">Lock to the kick</option>
+            <option value="walk">Walking line</option>
+            <option value="random">🎲 Random line</option>
+          </select>
+        </label>
+        <label>Chord changes
+          <select id="progSelect"></select>
+        </label>
+      </div>
+      <div class="btn-row">
+        <button id="newBass">🎲 New bass line</button>
+      </div>
+
+      <div class="tab-head">
+        <h3>Tab</h3>
+        <div class="seg" role="group" aria-label="Number of strings">
+          <button id="str4" class="toggle small" aria-pressed="true">4-string</button>
+          <button id="str5" class="toggle small" aria-pressed="false">5-string</button>
+        </div>
+      </div>
+      <div class="tab-wrap"><div id="tab" class="tab" role="img"></div></div>
+      <p class="hint"><span class="ap-key">Orange</span> = chromatic approach note leading into the next chord (→ in the grid). x = dead note.</p>
+
+      <details id="tunerBox">
+        <summary>Tuner &amp; reference notes</summary>
+        <div class="ref-row" id="refRow" aria-label="Play reference string"></div>
+        <button id="tunerBtn" aria-pressed="false">🎤 Start mic tuner</button>
+        <div class="tuner" aria-live="polite">
+          <div id="tunerNote" class="tuner-note">–</div>
+          <div class="meter" aria-hidden="true"><span class="center"></span><span id="needle" class="needle"></span></div>
+          <div id="tunerCents" class="tuner-cents"></div>
+        </div>
+      </details>
+    </section>
+
     <!-- Pattern grid -->
     <section class="card" aria-labelledby="patternLabel">
       <div class="card-head">

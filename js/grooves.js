@@ -263,7 +263,7 @@ export const GROOVES = [
       snare: '........g.......g..g....',
       kick: 'g..g..g..g..',
     },
-    bass: 'R - - 2 - - T - - F - -', bassSound: 'upright',
+    bass: 'R - - 2 - - T - - A - -', bassSound: 'upright',
     chords: 'x . . . . x . . . . . .', chordSound: 'epiano',
     melody: 'F - - . . T 2 - - R . .', melodySound: 'brass',
     prog: ['2:m7', '7:7', '0:maj7', '9:7'],
@@ -338,4 +338,17 @@ export const GROOVES = [
     prog: ['0:m', '0:m', '10:', '10:'],
     desc: 'Tempo is in eighth notes. Grouped 2+2+3 — “quick, quick, slow”.',
   },
+];
+
+// Chord progressions a bass player can swap in to practise lines over changes.
+export const PROGRESSIONS = [
+  { id: 'default', name: 'Groove default' },
+  { id: 'vamp-m', name: 'One-chord vamp (minor)', chords: ['0:m7'] },
+  { id: 'vamp-7', name: 'One-chord vamp (dominant)', chords: ['0:7'] },
+  { id: '145', name: 'I – IV – V – IV', chords: ['0:', '5:', '7:', '5:'] },
+  { id: '1645', name: 'I – vi – IV – V', chords: ['0:', '9:m', '5:', '7:'] },
+  { id: '251', name: 'ii – V – I', chords: ['2:m7', '7:7', '0:maj7', '0:maj7'] },
+  { id: 'minor', name: 'i – ♭VII – ♭VI – V', chords: ['0:m', '10:', '8:', '7:7'] },
+  { id: 'blues', name: '12-bar blues', chords: ['0:7', '5:7', '0:7', '0:7', '5:7', '5:7', '0:7', '0:7', '7:7', '5:7', '0:7', '7:7'] },
+  { id: 'circle', name: 'Circle of 4ths (all keys)', chords: ['0:7', '5:7', '10:7', '3:7', '8:7', '1:7', '6:7', '11:7', '4:7', '9:7', '2:7', '7:7'] },
 ];
