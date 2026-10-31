@@ -169,6 +169,20 @@ export function generateMelody({ beats, sub, melDensity }, rng = Math.random) {
   return tokens.join(' ');
 }
 
+/** Refine a drum pattern's grid k times: each step becomes the hit followed by k-1 rests. */
+export function expandDrum(str, k) {
+  if (k === 1) return cleanDrum(str);
+  return [...cleanDrum(str)].map((c) => c + '.'.repeat(k - 1)).join('');
+}
+
+/** Refine a token line's grid k times: notes are held (tied) across the new steps, rests stay rests. */
+export function expandLine(str, k) {
+  if (k === 1) return str;
+  return tokenize(str)
+    .map((t) => [t, ...Array(k - 1).fill(t === '.' ? '.' : '-')].join(' '))
+    .join(' ');
+}
+
 export function lcm(a, b) {
   const gcd = (x, y) => (y ? gcd(y, x % y) : x);
   return (a * b) / gcd(a, b);

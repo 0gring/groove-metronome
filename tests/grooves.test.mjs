@@ -1,7 +1,7 @@
 // Run: node tests/grooves.test.mjs
 import assert from 'node:assert/strict';
 import { GROOVES, DRUM_ORDER, PROGRESSIONS } from '../js/grooves.js';
-import { parseDrum, parseLine, parseComp, parseProg, generateMelody, generateBass, beatPositions, resolveNote, parseNoteToken, cleanDrum } from '../js/theory.js';
+import { parseDrum, parseLine, parseComp, parseProg, generateMelody, generateBass, beatPositions, resolveNote, parseNoteToken, cleanDrum, expandDrum, expandLine } from '../js/theory.js';
 
 let n = 0;
 const ids = new Set();
@@ -55,6 +55,19 @@ assert.deepEqual(beatPositions(4, 2), [0, 2]);
 assert.deepEqual(beatPositions(3, 2), [0, 2]); // swung eighths on a triplet grid
 assert.deepEqual(beatPositions(2, 4), [0, 1]); // grid too coarse for 16ths: use every step
 assert.equal(beatPositions(4, 0), null);
+assert.equal(expandDrum('X..x', 2), 'X.......x.'.slice(0, 2) + '....' + 'x.'); // each step -> hit + rest
+assert.equal(expandDrum('X..x', 2), 'X.....x.');
+assert.equal(expandLine('R - . F', 2), 'R - - - . . F -');
+// refining an eighth-note groove to 16ths keeps every hit at the same time position
+for (const g of GROOVES.filter((x) => x.sub === 2)) {
+  for (const str of Object.values(g.drums)) {
+    const a = parseDrum(str);
+    const b = parseDrum(expandDrum(str, 2));
+    assert.equal(b.length, a.length * 2);
+    a.forEach((h, i) => assert.deepEqual(b[i * 2], h));
+    b.forEach((h, i) => i % 2 && assert.equal(h, null));
+  }
+}
 assert.equal(generateBass({ beats: 4, sub: 4 }, 'r58', Math.random, 2), 'R - F - 8 - F - R - F - 8 - F -');
 assert.equal(resolveNote(parseNoteToken('T'), 'm7'), 3);
 assert.equal(resolveNote(parseNoteToken('T'), '7'), 4);

@@ -1,7 +1,7 @@
 import { AudioEngine, SOUNDS } from './audio.js';
 import { GROOVES, DRUM_ORDER, DRUM_LABELS, PROGRESSIONS } from './grooves.js';
 import {
-  QUALITIES, parseDrum, parseLine, parseComp, parseProg, generateMelody, generateBass, beatPositions, resolveNote, cleanDrum, mod, lcm,
+  QUALITIES, parseDrum, parseLine, parseComp, parseProg, generateMelody, generateBass, beatPositions, resolveNote, cleanDrum, expandDrum, expandLine, mod, lcm,
 } from './theory.js';
 import { Tuner } from './tuner.js';
 import { initPractice } from './practice.js';
@@ -105,25 +105,44 @@ const grooveDef = (id) => GROOVES.find((g) => g.id === id) ?? GROOVES.find((g) =
 
 // ------------------------------------------------------------------ groove model
 
+/**
+ * How many times to refine the groove's grid so the bass can play the chosen note values
+ * (e.g. 16ths over an eighth-note groove). Triplet-feel grooves keep their grid (swung 8ths / triplets).
+ */
+/** Notes per beat for the chosen note values (0 = style default). In 7/8 the beat is an eighth note. */
+function feelDiv(def) {
+  const d = state.bassStyle !== 'orig' ? state.bassFeel : 0;
+  return d && def.beatUnit === '♪' ? Math.max(1, d / 2) : d;
+}
+
+function gridFactor(def) {
+  if (piece) return 1;
+  const need = feelDiv(def);
+  const sub = def.basic ? state.basicSub : def.sub;
+  return need && sub !== 3 && sub < need ? need / sub : 1;
+}
+
 function buildGroove(def) {
+  const k = gridFactor(def);
   const g = {
     def,
+    k,
     basic: !!def.basic,
     beats: def.basic ? state.basicBeats : def.beats,
-    sub: def.basic ? state.basicSub : def.sub,
+    sub: (def.basic ? state.basicSub : def.sub) * k,
     accentBeats: def.accentBeats ?? [0],
     drumStr: {},
     drums: {},
     sounds: { bass: def.bassSound ?? 'electric', chords: def.chordSound ?? 'epiano', melody: def.melodySound ?? 'square' },
   };
   g.spb = g.beats * g.sub;
-  for (const [k, s] of Object.entries(def.drums)) {
-    g.drumStr[k] = cleanDrum(s);
-    g.drums[k] = parseDrum(s);
+  for (const [name, str] of Object.entries(def.drums)) {
+    g.drumStr[name] = expandDrum(str, k);
+    g.drums[name] = parseDrum(g.drumStr[name]);
   }
   g.bass = makeBass(g);
-  g.comp = def.chords ? parseComp(def.chords) : null;
-  g.melody = def.melody ? parseLine(def.melody) : g.basic ? null : parseLine(generateMelody(g));
+  g.comp = def.chords ? parseComp(expandLine(def.chords, k)) : null;
+  g.melody = def.melody ? parseLine(expandLine(def.melody, k)) : g.basic ? null : parseLine(generateMelody(g));
   g.prog = makeProg(def);
   if (piece) adaptForPiece(g);
   return g;
@@ -155,8 +174,8 @@ function adaptForPiece(g) {
 }
 
 function makeBass(g) {
-  if (state.bassStyle === 'orig') return g.def.bass ? parseLine(g.def.bass) : null;
-  return parseLine(generateBass({ beats: g.beats, sub: g.sub, kick: g.drumStr.kick }, state.bassStyle, Math.random, state.bassFeel));
+  if (state.bassStyle === 'orig') return g.def.bass ? parseLine(expandLine(g.def.bass, g.k ?? 1)) : null;
+  return parseLine(generateBass({ beats: g.beats, sub: g.sub, kick: g.drumStr.kick }, state.bassStyle, Math.random, feelDiv(g.def)));
 }
 
 function makeProg(def) {
@@ -274,7 +293,7 @@ function scheduleStep(bar, s, t) {
 
   if (L.click.on) {
     if (onBeat) audio.click(tt, beat === 0 ? 'accent' : g.accentBeats.includes(beat) ? 'group' : 'beat');
-    else if (g.basic && state.subClicks) audio.click(tt, 'sub');
+    else if (g.basic && state.subClicks && s % g.k === 0) audio.click(tt, 'sub');
   }
 
   if (L.drums.on) {
@@ -733,7 +752,7 @@ function highlightTab(i) {
 
 /** Explain how the chosen note values map onto this groove's grid. */
 function updateFeelHint() {
-  const div = state.bassFeel;
+  const div = feelDiv(cur.def);
   let hint = '';
   if (div && state.bassStyle === 'orig') hint = '';
   else if (div && (state.bassStyle === 'kick' || state.bassStyle === 'random')) hint = 'Only kick hits that fall on this rhythm are used.';
@@ -741,7 +760,8 @@ function updateFeelHint() {
     const n = beatPositions(cur.sub, div).length;
     if (cur.sub === 3 && div === 2) hint = `Swung eighths (this groove has a triplet feel). ${hint}`;
     else if (cur.sub === 3 && div === 4) hint = `Triplets (this groove has a triplet feel). ${hint}`;
-    else if (n < div) hint = `This groove's grid only goes down to ${cur.sub === 2 ? 'eighth' : 'quarter'} notes, so those are used. ${hint}`;
+    else if (cur.def.beatUnit === '♪' && state.bassFeel === 1) hint = `In ${cur.beats}/8 the beat is an eighth note, so the bass plays on every beat. ${hint}`;
+    else if (n < div) hint = `This groove can't play ${div === 4 ? '16th' : 'eighth'} notes, so the closest values are used. ${hint}`;
   }
   $('bassFeelHint').textContent = hint.trim();
   $('bassFeelHint').hidden = !hint.trim();
@@ -809,7 +829,7 @@ function renderGrid() {
         el.className = 'cell';
         if (lane.kind === 'click') {
           if (c % g.sub === 0) el.classList.add(c % g.spb === 0 ? 'v-X' : 'v-x');
-          else if (state.subClicks) el.classList.add('v-g');
+          else if (state.subClicks && c % g.k === 0) el.classList.add('v-g');
         } else {
           const e = lane.line.events[pos];
           if (e) {
@@ -1119,15 +1139,17 @@ function init() {
     state.drumMode = e.target.value;
     save();
   };
+  // a finer grid (e.g. 16ths over an eighth-note groove) needs the groove rebuilt; otherwise only the bass changes
+  const applyBass = () => (gridFactor(cur.def) !== cur.k ? rebuild() : refreshBass());
   $('bassStyle').onchange = (e) => {
     state.bassStyle = e.target.value;
-    refreshBass();
+    applyBass();
   };
   $('bassFeel').onchange = (e) => {
     state.bassFeel = Number(e.target.value);
     // the groove's own line has a fixed rhythm: switch to a style that can follow the note values
     if (state.bassFeel && state.bassStyle === 'orig') state.bassStyle = 'roots';
-    refreshBass();
+    applyBass();
   };
   $('newBass').onclick = () => {
     state.bassStyle = 'random';
