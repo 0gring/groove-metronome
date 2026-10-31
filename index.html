@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#16141f">
+  <meta name="description" content="A groove metronome: drum grooves in many styles with bass, chords and rhythmic melodies. Works offline.">
+  <title>Groove Metronome</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <div id="flash" aria-hidden="true"></div>
+
+  <header class="top">
+    <h1><span class="logo" aria-hidden="true"></span>Groove Metronome</h1>
+    <button id="installBtn" class="small" hidden>Install app</button>
+  </header>
+
+  <main>
+    <!-- Groove picker -->
+    <section class="card" aria-labelledby="grooveLabel">
+      <h2 id="grooveLabel" class="sr-only">Groove</h2>
+      <div class="groove-row">
+        <button id="prevGroove" class="icon-btn" aria-label="Previous groove">‹</button>
+        <select id="grooveSelect" aria-label="Groove"></select>
+        <button id="nextGroove" class="icon-btn" aria-label="Next groove">›</button>
+      </div>
+      <p id="grooveDesc" class="desc"></p>
+      <div id="basicControls" class="field-row" hidden>
+        <label>Beats per bar
+          <select id="basicBeats"></select>
+        </label>
+        <label>Subdivision
+          <select id="basicSub">
+            <option value="1">♩ Quarter</option>
+            <option value="2">♫ Eighths</option>
+            <option value="3">Triplets</option>
+            <option value="4">Sixteenths</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="subClicks"> Click subdivisions</label>
+      </div>
+    </section>
+
+    <!-- Transport -->
+    <section class="card transport" aria-label="Tempo and transport">
+      <div class="bpm-row">
+        <button id="bpmDown" class="round" aria-label="Slower">−</button>
+        <div class="bpm-display">
+          <output id="bpmOut" for="bpmSlider" aria-live="polite">100</output>
+          <span id="bpmUnit">BPM</span>
+        </div>
+        <button id="bpmUp" class="round" aria-label="Faster">+</button>
+      </div>
+      <input type="range" id="bpmSlider" min="30" max="300" step="1" aria-label="Tempo in BPM">
+      <div id="beats" class="beats" aria-hidden="true"></div>
+      <div class="transport-row">
+        <button id="tapBtn" class="secondary">Tap</button>
+        <button id="playBtn" class="play" aria-pressed="false"><span class="play-icon" aria-hidden="true"></span><span class="play-label">Play</span></button>
+        <button id="countInBtn" class="secondary toggle" aria-pressed="true">Count-in</button>
+      </div>
+      <p id="status" class="status" aria-live="polite"></p>
+    </section>
+
+    <!-- Pattern grid -->
+    <section class="card" aria-labelledby="patternLabel">
+      <div class="card-head">
+        <h2 id="patternLabel">Pattern</h2>
+        <button id="resetPattern" class="small">Reset</button>
+      </div>
+      <p class="hint">Tap a drum cell to change it: off → hit → accent → ghost.</p>
+      <div class="grid-wrap"><div id="grid" class="grid"></div></div>
+      <p id="chordLine" class="chord-line"></p>
+    </section>
+
+    <!-- Mixer & sound -->
+    <section class="card" aria-labelledby="mixLabel">
+      <h2 id="mixLabel">Mix &amp; sound</h2>
+      <div id="mixer" class="mixer"></div>
+      <div class="field-row">
+        <label>Key
+          <select id="keySelect"></select>
+        </label>
+        <label>Swing <output id="swingOut"></output>
+          <input type="range" id="swing" min="50" max="75" step="1">
+        </label>
+        <label>Humanize <output id="humanOut"></output>
+          <input type="range" id="humanize" min="0" max="100" step="5">
+        </label>
+      </div>
+      <div class="btn-row">
+        <button id="newMelody">🎲 New melody</button>
+        <button id="origMelody" class="secondary">Original melody</button>
+      </div>
+    </section>
+
+    <!-- Practice -->
+    <section class="card" aria-labelledby="practiceLabel">
+      <h2 id="practiceLabel">Practice tools</h2>
+
+      <fieldset>
+        <legend><label class="check"><input type="checkbox" id="gapOn"> Gap trainer</label></legend>
+        <p class="hint">Plays some bars, then goes silent. Keep the time yourself and see if you land together.</p>
+        <div class="field-row">
+          <label>Play bars <input type="number" id="gapPlay" min="1" max="16" inputmode="numeric"></label>
+          <label>Silent bars <input type="number" id="gapMute" min="1" max="16" inputmode="numeric"></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend><label class="check"><input type="checkbox" id="trainOn"> Tempo trainer</label></legend>
+        <p class="hint">Speeds up gradually until the target tempo.</p>
+        <div class="field-row">
+          <label>+ BPM <input type="number" id="trainInc" min="1" max="20" inputmode="numeric"></label>
+          <label>Every bars <input type="number" id="trainEvery" min="1" max="32" inputmode="numeric"></label>
+          <label>Target <input type="number" id="trainTarget" min="30" max="300" inputmode="numeric"></label>
+        </div>
+      </fieldset>
+
+      <div class="checks">
+        <label class="check"><input type="checkbox" id="flashOn"> Flash screen on beat</label>
+        <label class="check" id="vibrateWrap"><input type="checkbox" id="vibrateOn"> Vibrate on beat</label>
+        <label class="check"><input type="checkbox" id="wakeOn"> Keep screen on while playing</label>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Space = play/stop · ↑/↓ = tempo · All sounds are synthesized live, works offline.</p>
+  </footer>
+</body>
+</html>
