@@ -31,6 +31,7 @@ const SCALE = {
 };
 const SCALE_FOR = { '': 'ionian', maj7: 'ionian', 6: 'ionian', m: 'aeolian', m7: 'dorian', m9: 'dorian', m6: 'dorian', 7: 'mixo', 9: 'mixo', sus: 'mixo', 5: 'aeolian', m7b5: 'locrian', dim: 'dim' };
 const FRETS = 12;
+const SPEEDS = [50, 60, 70, 85, 100];
 const COUNTS = { 1: [''], 2: ['', '&'], 3: ['', '&', 'a'], 4: ['', 'e', '&', 'a'] };
 
 // ------------------------------------------------------------------ state
@@ -66,6 +67,8 @@ const DEFAULTS = {
   strings: 4,
   fbMode: 'chord',
   fbLabels: 'iv',
+  speed: 100,
+  speedAuto: { on: false, bars: 8 },
 };
 
 function merge(base, over) {
@@ -170,7 +173,8 @@ const timer = new Worker(
 );
 timer.onmessage = tick;
 
-const stepDur = () => 60 / state.bpm / cur.sub;
+const playBpm = () => (state.bpm * state.speed) / 100;
+const stepDur = () => 60 / playBpm() / cur.sub;
 
 function tick() {
   if (!sched.playing) return;
@@ -196,6 +200,10 @@ function scheduleStep(bar, s, t) {
   const tr = state.trainer;
   if (s === 0 && bar > 0 && tr.on && bar % tr.every === 0 && state.bpm < tr.target) {
     setBpm(Math.min(tr.target, state.bpm + tr.inc));
+  }
+  const sa = state.speedAuto;
+  if (s === 0 && bar > 0 && sa.on && state.speed < 100 && bar % sa.bars === 0) {
+    setSpeed(SPEEDS.find((v) => v > state.speed) ?? 100);
   }
 
   const sd = stepDur();
@@ -788,7 +796,20 @@ function setBpm(v) {
   state.bpm = Math.max(30, Math.min(300, Math.round(v)));
   $('bpmOut').textContent = state.bpm;
   $('bpmSlider').value = state.bpm;
+  updateSpeedInfo();
   save();
+}
+
+function setSpeed(v) {
+  state.speed = v;
+  for (const b of $('speedBtns').children) b.setAttribute('aria-pressed', String(Number(b.dataset.speed) === v));
+  updateSpeedInfo();
+  save();
+}
+
+function updateSpeedInfo() {
+  $('speedInfo').textContent =
+    state.speed < 100 ? `Playing at ${Math.round(playBpm())} BPM — ${state.speed}% of ${state.bpm}` : '';
 }
 
 let taps = [];
@@ -1017,6 +1038,29 @@ function init() {
   $('str5').onclick = () => setStrings(5);
   setStrings(state.strings);
 
+  // practice speed
+  for (const v of SPEEDS) {
+    const b = document.createElement('button');
+    b.className = 'toggle small';
+    b.dataset.speed = v;
+    b.textContent = `${v}%`;
+    b.setAttribute('aria-label', `${v} percent speed`);
+    b.onclick = () => setSpeed(v);
+    $('speedBtns').append(b);
+  }
+  $('speedAuto').checked = state.speedAuto.on;
+  $('speedAuto').onchange = (e) => {
+    state.speedAuto.on = e.target.checked;
+    save();
+  };
+  $('speedBars').value = state.speedAuto.bars;
+  $('speedBars').onchange = (e) => {
+    const v = Math.max(1, Math.min(32, Math.round(Number(e.target.value) || 8)));
+    state.speedAuto.bars = v;
+    e.target.value = v;
+    save();
+  };
+
   // fretboard
   $('fbMode').value = state.fbMode;
   $('fbMode').onchange = (e) => {
@@ -1150,6 +1194,7 @@ function init() {
   }
 
   setBpm(state.bpm ?? cur.def.bpm);
+  setSpeed(state.speed);
   renderGroove();
 }
 

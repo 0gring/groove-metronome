@@ -63,6 +63,16 @@
         <button id="playBtn" class="play" aria-pressed="false"><span class="play-icon" aria-hidden="true"></span><span class="play-label">Play</span></button>
         <button id="countInBtn" class="secondary toggle" aria-pressed="true">Count-in</button>
       </div>
+      <div class="speed-row">
+        <span class="speed-lbl" id="speedLbl">Practice speed</span>
+        <div class="seg speed" id="speedBtns" role="group" aria-labelledby="speedLbl"></div>
+      </div>
+      <p id="speedInfo" class="speed-info" aria-live="polite"></p>
+      <div class="speed-auto">
+        <label class="check"><input type="checkbox" id="speedAuto"> Auto step-up every</label>
+        <input type="number" id="speedBars" min="1" max="32" inputmode="numeric" aria-label="Bars before stepping up">
+        <span>bars</span>
+      </div>
       <p id="status" class="status" aria-live="polite"></p>
     </section>
 

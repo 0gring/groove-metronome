@@ -29,6 +29,8 @@ and works offline. Every sound is synthesized live with the Web Audio API (no sa
 - **Practice tools:** gap trainer (plays N bars, goes silent for M bars — test your internal clock),
   tempo trainer (+X BPM every N bars up to a target), screen flash and phone vibration on the beat,
   keep-screen-on.
+- **Practice speed:** play at 50 / 60 / 70 / 85 / 100% of the target tempo, optionally stepping up
+  automatically every N bars until you're at full speed.
 - Groove changes while playing happen on the next bar line, so you stay in time.
 - Settings are remembered between sessions.
 
