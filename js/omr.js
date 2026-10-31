@@ -21,11 +21,13 @@ export function saveConfig(cfg) {
   }
 }
 
-/** Guess "owner/repo" when the app is served from GitHub Pages (owner.github.io/repo/). */
+/**
+ * Suggest the conversion repo name: "<owner>/groove-metronome-omr" when served from GitHub Pages.
+ * (Never the app's own repo: that one is public, and uploads must go to a private repo.)
+ */
 export function guessRepo(loc = location) {
   const m = /^([a-z0-9-]+)\.github\.io$/i.exec(loc.hostname);
-  const repo = loc.pathname.split('/').filter(Boolean)[0];
-  return m && repo ? `${m[1]}/${repo}` : '';
+  return m ? `${m[1]}/groove-metronome-omr` : '';
 }
 
 export const isConfigured = (cfg = loadConfig()) => !!(cfg.repo && cfg.token);
@@ -66,16 +68,26 @@ function toBase64(buffer) {
   return btoa(bin);
 }
 
-/** Check repo access (and that the workflow exists) before the first upload. */
+const PUBLIC_MSG = (repo) =>
+  `${repo} is a public repository — anyone could see the sheet music you upload. Use a private repository for conversions.`;
+
+/** Refuse to upload to a public repository. */
+async function assertPrivate(cfg) {
+  const info = await gh(cfg, '');
+  if (!info.private) throw new GhError(PUBLIC_MSG(cfg.repo));
+}
+
+/** Check repo access, that it is private, and that the workflow exists, before the first upload. */
 export async function testConnection(cfg) {
-  await gh(cfg, '');
+  await assertPrivate(cfg);
   const wf = await gh(cfg, 'contents/.github/workflows/omr.yml', { allow404: true });
-  if (!wf) return 'Connected, but the conversion workflow (.github/workflows/omr.yml) is not on the default branch yet — merge it first.';
-  return `Connected to ${cfg.repo}. Ready to convert.`;
+  if (!wf) return 'Connected, but this repository has no .github/workflows/omr.yml yet — copy the omr-repo/ files from the app repository into it.';
+  return `Connected to ${cfg.repo} (private). Ready to convert.`;
 }
 
 /** Upload a PDF; returns the job id. */
 export async function submit(cfg, jobId, pdfBuffer, displayName) {
+  await assertPrivate(cfg);
   await gh(cfg, `contents/omr/inbox/${jobId}.pdf`, {
     method: 'PUT',
     body: JSON.stringify({ message: `Convert “${displayName}” to MusicXML`, content: toBase64(pdfBuffer) }),

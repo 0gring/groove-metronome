@@ -69,23 +69,24 @@ meter matches the piece; otherwise you get the click.
 ### Sheet-music PDFs → MusicXML (Audiveris)
 
 Printed notation can be converted into playable MusicXML with **[Audiveris](https://github.com/Audiveris/audiveris)**
-(free, open-source optical music recognition), which runs as a GitHub Action in your repo
-(`.github/workflows/omr.yml`). From the app: open a PDF in **My music** → **🎼 Convert to MusicXML**.
-The app uploads the PDF to `omr/inbox/`, the workflow converts it (a few minutes), and the result appears in
-your library as a playable piece with the original PDF shown under it.
+(free, open-source optical music recognition), running as a GitHub Action in a **separate private repository**,
+so your sheet music never becomes public. From the app: open a PDF in **My music** → **🎼 Convert to MusicXML**.
+The app uploads the PDF to the private repo, the workflow converts it (a few minutes), and the result appears
+in your library as a playable piece with the original PDF shown under it.
 
-One-time setup (in the app under *Sheet music → MusicXML setup*):
+One-time setup:
 
-1. Have this code (including the workflow) on your repo's default branch.
+1. Create a **private** repository (e.g. `groove-metronome-omr`) and copy the contents of
+   [`omr-repo/`](omr-repo/) into it (the workflow, the conversion script and the `omr/` folders).
 2. Create a [fine-grained GitHub token](https://github.com/settings/personal-access-tokens/new) with access
-   to **only this repository** and the permission **Contents: Read and write**.
-3. Enter `owner/repo` and the token in the app. The token is kept only on your device and is sent only to
-   `api.github.com`.
+   to **only that private repository** and the permission **Contents: Read and write**.
+3. In the app (*My music → Sheet music → MusicXML setup*) enter `owner/groove-metronome-omr` and the token.
+   The token is kept only on your device and is sent only to `api.github.com`. The app refuses to upload to a
+   public repository.
 
-You can also skip the app and drop a PDF/PNG/JPG into `omr/inbox/` on GitHub yourself; results land in
-`omr/out/`. Recognition is best on clean, computer-engraved scores and weaker on phone photos and handwriting,
-so check the result by ear. Bass-clef parts are assumed to be written bass (sounding an octave lower); change
-**Pitch** on the piece if needed.
+Recognition is best on clean, computer-engraved scores and weaker on phone photos and handwriting, so check
+the result by ear. Bass-clef parts are assumed to be written bass (sounding an octave lower); change **Pitch** on
+the piece if needed.
 
 ## Get it on Android
 
@@ -132,6 +133,5 @@ js/omr.js             GitHub upload/polling for sheet-music conversion
 js/pdfview.js         PDF rendering / text extraction (loads vendor/pdfjs on demand)
 vendor/pdfjs/         pdf.js 4.10.38 legacy build (Apache-2.0)
 sw.js, manifest.webmanifest, icons/   PWA / offline / install
-.github/workflows/omr.yml + .github/scripts/omr-convert.sh   Audiveris conversion
-omr/inbox, omr/out    conversion queue and results
+omr-repo/             files for your private conversion repo (Audiveris workflow + script)
 ```
