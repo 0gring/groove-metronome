@@ -4,6 +4,7 @@ import {
   QUALITIES, parseDrum, parseLine, parseComp, parseProg, generateMelody, generateBass, resolveNote, cleanDrum, mod, lcm,
 } from './theory.js';
 import { Tuner } from './tuner.js';
+import { initPractice } from './practice.js';
 
 const $ = (id) => document.getElementById(id);
 const audio = new AudioEngine();
@@ -123,7 +124,33 @@ function buildGroove(def) {
   g.comp = def.chords ? parseComp(def.chords) : null;
   g.melody = def.melody ? parseLine(def.melody) : g.basic ? null : parseLine(generateMelody(g));
   g.prog = makeProg(def);
+  if (piece) adaptForPiece(g);
   return g;
+}
+
+// Active imported piece (tab / MusicXML) being practised, and its loop range (0-based bars).
+let piece = null;
+const loop = { start: 0, end: 0 };
+const pieceBarOf = (bar) => loop.start + mod(bar, loop.end - loop.start + 1);
+
+/** In piece mode the groove only supplies drums/click; the piece supplies the notes. */
+function adaptForPiece(g) {
+  const def = g.def;
+  if (!def.basic && def.beats === piece.beats) {
+    g.backing = true;
+  } else if (!def.basic) {
+    g.drumStr = {};
+    g.drums = {};
+    g.sub = piece.beatType >= 8 ? 2 : 4;
+    g.accentBeats = piece.beats === 6 && piece.beatType === 8 ? [0, 3] : [0];
+  }
+  g.beats = piece.beats;
+  g.spb = g.beats * g.sub;
+  g.piece = true;
+  g.bass = null;
+  g.comp = null;
+  g.melody = null;
+  g.prog = parseProg(['0:']);
 }
 
 function makeBass(g) {
@@ -230,6 +257,12 @@ function scheduleStep(bar, s, t) {
     const barsPerPat = g.bass.length / g.spb;
     ev.bassStart = bar - (bar % barsPerPat);
   }
+  if (g.piece && piece) {
+    ev.pieceBar = pieceBarOf(bar);
+    ev.pieceBeat = s / g.sub;
+    const sounding = (piece.byBar[ev.pieceBar] ?? []).filter((n) => !n.dead && n.beat <= ev.pieceBeat + 1e-6 && n.beat + n.dur > ev.pieceBeat + 1e-6);
+    ev.pieceNote = sounding.length ? sounding[sounding.length - 1] : null;
+  }
   visQ.push(ev);
   if (ev.muted) return;
 
@@ -260,6 +293,23 @@ function scheduleStep(bar, s, t) {
   if (L.bass.on && g.bass && !ev.yourTurn) {
     const e = g.bass.events[abs % g.bass.length];
     if (e) audio.bass(at(tt), bassNoteMidi(e.note, bar), e.len * sd * 0.92, vj(0.85), soundFor('bass'), e.note.dead);
+  }
+
+  if (g.piece && piece) {
+    const pb = pieceBarOf(bar);
+    const from = s / g.sub;
+    const to = (s + 1) / g.sub;
+    const beatSec = 60 / playBpm();
+    const layer = piece.layer;
+    if (L[layer].on && !ev.yourTurn) {
+      for (const n of piece.byBar[pb] ?? []) {
+        if (n.beat < from - 1e-6 || n.beat >= to - 1e-6) continue;
+        const nt = at(t + (n.beat - from) * beatSec);
+        const dur = n.dur * beatSec * 0.92;
+        if (layer === 'bass') audio.bass(nt, n.midi, dur, vj(0.85), soundFor('bass'), n.dead);
+        else if (!n.dead) audio.melody(nt, n.midi, dur, vj(0.8), soundFor('melody'));
+      }
+    }
   }
 
   if (L.chords.on && g.comp) {
@@ -306,7 +356,9 @@ function stop() {
   highlightCol(-1);
   showBeat(-1);
   highlightTab(-1);
+  lastChordBar = null;
   showChordNow(0);
+  practice.onStop();
   updatePlayUI();
   releaseWake();
   setStatus('');
@@ -328,12 +380,17 @@ function frame() {
   while (visQ.length && visQ[0].t <= now) {
     last = visQ.shift();
     if (last.onBeat) beatFx(last);
+    if (last.s === 0 && !last.countIn) practice.onBar(last.bar);
   }
   if (!last) return;
   highlightCol(last.gen === gridGen && !last.countIn ? last.col : -1);
   if (!last.countIn) {
     highlightChord(last.chordIdx);
     showChordNow(last.bar);
+    if (last.pieceBar !== undefined && piece) {
+      practice.onStep(last);
+      lightFret(fretPosFor(last.pieceNote));
+    }
     if (cur.bass && last.bassPos !== undefined && last.gen === gridGen) {
       if (last.bassStart !== tabStart || tabGen !== gridGen) renderTab(last.bassStart);
       highlightTab(last.bassPos);
@@ -444,6 +501,10 @@ function renderBassPanel() {
 function showChordNow(bar) {
   if (bar === lastChordBar) return;
   lastChordBar = bar;
+  if (piece) {
+    renderPieceFretboard(pieceBarOf(bar));
+    return;
+  }
   const p = cur.prog;
   $('chordNow').textContent = chordName(p[mod(bar, p.length)]);
   $('chordNext').textContent = p.length > 1 ? chordName(p[mod(bar + 1, p.length)]) : '—';
@@ -456,8 +517,6 @@ let fbCells = {};
 let litFret = null;
 
 function renderFretboard(chord) {
-  const fb = $('fretboard');
-  const { open, names } = STRINGS[state.strings];
   const rootPc = mod(state.key + chord.root, 12);
   const chordIv = QUALITIES[chord.q] ?? QUALITIES[''];
   const tones = new Set(chordIv.map((i) => mod(i, 12)));
@@ -485,6 +544,17 @@ function renderFretboard(chord) {
   sp.textContent = `— ${what}`;
   cap.append(sp);
 
+  drawFretboard((si, f, pc) => {
+    const iv = mod(pc - rootPc, 12);
+    return [!shown.has(iv) ? '' : iv === 0 ? 'root' : tones.has(iv) ? 'ct' : 'sc', state.fbLabels === 'notes' ? KEYS[pc] : ivLabel(iv)];
+  });
+  const list = [...shown].sort((a, b) => a - b).map((iv) => KEYS[mod(rootPc + iv, 12)]);
+  $('fretboard').setAttribute('aria-label', `Fretboard, ${chordName(chord)} ${what}: ${list.join(', ')}`);
+}
+
+/** Build the fretboard grid; dotFor(si, fret, pitchClass) returns [class, label]. */
+function drawFretboard(dotFor) {
+  const { open, names } = STRINGS[state.strings];
   fbCells = {};
   litFret = null;
   const frag = document.createDocumentFragment();
@@ -499,21 +569,45 @@ function renderFretboard(chord) {
     div('flab', names[si]);
     for (let f = 0; f <= FRETS; f++) {
       const pc = mod(o + f, 12);
-      const iv = mod(pc - rootPc, 12);
       const cell = div('fcell' + (f === 0 ? ' open' : f === FRETS ? ' f12' : ''));
+      const [cls, label] = dotFor(si, f, pc);
       const dot = document.createElement('span');
-      dot.className = 'dot' + (!shown.has(iv) ? '' : iv === 0 ? ' root' : tones.has(iv) ? ' ct' : ' sc');
-      dot.textContent = state.fbLabels === 'notes' ? KEYS[pc] : ivLabel(iv);
+      dot.className = 'dot' + (cls ? ` ${cls}` : '');
+      dot.textContent = label;
       cell.append(dot);
       fbCells[`${si}:${f}`] = cell;
     }
   });
   div('fmark');
   for (let f = 0; f <= FRETS; f++) div('fmark', [3, 5, 7, 9].includes(f) ? '•' : f === 12 ? '••' : '');
-  fb.replaceChildren(frag);
+  $('fretboard').replaceChildren(frag);
+}
 
-  const list = [...shown].sort((a, b) => a - b).map((iv) => KEYS[mod(rootPc + iv, 12)]);
-  fb.setAttribute('aria-label', `Fretboard, ${chordName(chord)} ${what}: ${list.join(', ')}`);
+/** Where a piece note sits on the displayed fretboard (uses the file's fingering when tunings match). */
+function fretPosFor(n) {
+  if (!n || !piece) return null;
+  const { open } = STRINGS[state.strings];
+  const same = piece.tuning.length === open.length && piece.tuning.every((m, i) => m === open[i]);
+  if (same && n.si !== null && n.si !== undefined && n.f !== null && n.f <= FRETS) return { si: n.si, f: n.f };
+  let best = null;
+  open.forEach((o, si) => {
+    const f = n.midi - o;
+    if (f >= 0 && f <= FRETS && (!best || f < best.f)) best = { si, f };
+  });
+  return best;
+}
+
+function renderPieceFretboard(pb) {
+  const notes = (piece.byBar[pb] ?? []).filter((n) => !n.dead);
+  const pos = new Set(notes.map(fretPosFor).filter(Boolean).map((p) => `${p.si}:${p.f}`));
+  drawFretboard((si, f, pc) => [pos.has(`${si}:${f}`) ? 'ct' : '', KEYS[pc]]);
+  const cap = $('fbCaption');
+  cap.replaceChildren(`Bar ${pb + 1} `);
+  const sp = document.createElement('span');
+  sp.textContent = '— notes in this bar';
+  cap.append(sp);
+  const names = [...new Set(notes.map((n) => KEYS[mod(n.midi, 12)]))];
+  $('fretboard').setAttribute('aria-label', `Fretboard, bar ${pb + 1}: ${names.join(', ') || 'rest'}`);
 }
 
 function lightFret(pos) {
@@ -845,7 +939,7 @@ function selectGroove(id) {
   state.grooveId = id;
   const def = grooveDef(id);
   state.swing = null;
-  setBpm(def.bpm);
+  if (!piece) setBpm(def.bpm);
   rebuild();
 }
 
@@ -1197,5 +1291,37 @@ function init() {
   setSpeed(state.speed);
   renderGroove();
 }
+
+const practice = initPractice({
+  isPlaying: () => sched.playing,
+  setBpm,
+  /** Activate (or clear, with null) an imported piece; restarts playback from the loop start. */
+  setPiece(p, from = 0, to = null) {
+    const wasPlaying = sched.playing;
+    if (wasPlaying) stop();
+    piece = p;
+    if (p) {
+      p.byBar = Array.from({ length: p.bars }, () => []);
+      for (const n of p.notes) p.byBar[n.bar]?.push(n);
+      const sorted = p.notes.map((n) => n.midi).sort((a, b) => a - b);
+      p.layer = sorted[Math.floor(sorted.length / 2)] < 55 ? 'bass' : 'melody';
+      loop.start = Math.max(0, Math.min(from, p.bars - 1));
+      loop.end = Math.max(loop.start, Math.min(to ?? p.bars - 1, p.bars - 1));
+    }
+    document.body.classList.toggle('piece-mode', !!p);
+    cur = buildGroove(grooveDef(state.grooveId));
+    renderGroove();
+    lastChordBar = null;
+    showChordNow(0);
+    if (wasPlaying) start();
+  },
+  setLoop(from, to) {
+    loop.start = from;
+    loop.end = to;
+    lastChordBar = null;
+    showChordNow(0);
+  },
+  backingInfo: () => (!cur.piece ? '' : cur.def.basic ? 'Click' : cur.backing ? `${cur.def.name} drums` : `Click — “${cur.def.name}” is in a different meter`),
+});
 
 init();

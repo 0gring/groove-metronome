@@ -241,3 +241,37 @@ summary { cursor: pointer; font-weight: 600; min-height: 40px; display: flex; al
 .speed-info { margin: 0; text-align: center; color: var(--accent-2); font-weight: 600; min-height: 1.4em; }
 .speed-auto { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.95rem; }
 .speed-auto input[type="number"] { width: 64px; min-height: 40px; }
+
+/* My music */
+body.piece-mode .groove-only { display: none !important; }
+.import-row { margin-top: 0; }
+.file-btn {
+  flex: 1 1 140px; display: flex; align-items: center; justify-content: center; min-height: 44px; border-radius: 12px;
+  background: var(--accent); color: #241102; font-weight: 700; cursor: pointer;
+}
+.file-btn:focus-within, #importFile:focus-visible + .file-btn { outline: 3px solid var(--accent-2); outline-offset: 2px; }
+.paste-box { display: grid; gap: 8px; margin: 8px 0; }
+.paste-box input, .paste-box textarea {
+  font: 13px/1.35 ui-monospace, Menlo, Consolas, monospace; color: var(--text); background: var(--card-2);
+  border: 1px solid var(--line); border-radius: 12px; padding: 10px; width: 100%;
+}
+.paste-box input { font-family: inherit; font-size: 1rem; min-height: 44px; }
+.import-msg { margin: 6px 0; min-height: 1.2em; font-size: 0.9rem; }
+.import-msg.err { color: #ff8f8f; }
+.import-msg.ok { color: var(--accent-2); }
+.lib-list { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; }
+.lib-list li { display: grid; grid-template-columns: 1fr 44px; gap: 6px; }
+.lib-list .open { text-align: left; display: flex; align-items: center; gap: 8px; overflow: hidden; }
+.lib-list .open span.n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lib-list .open[aria-current="true"] { border-color: var(--accent-2); background: color-mix(in srgb, var(--accent-2) 14%, var(--card-2)); }
+.lib-list .del { padding: 0; color: var(--muted); }
+.badge { font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 6px; background: var(--line); color: var(--muted); flex: none; }
+.piece-view { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+.piece-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.piece-head h3 { font-size: 1.1rem; overflow-wrap: anywhere; }
+.pdf-view { margin-top: 12px; }
+.pdf-nav { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; text-align: center; gap: 8px; margin-bottom: 8px; color: var(--muted); }
+.pdf-wrap { background: #fff; border-radius: 8px; overflow: hidden; min-height: 120px; display: flex; justify-content: center; touch-action: pan-y pinch-zoom; }
+.pdf-wrap canvas { display: block; max-width: 100%; }
+.speed-auto + .speed-auto, .pdf-view .speed-auto { margin-top: 10px; }
+.tcol.bar-label .nm { color: var(--muted); }

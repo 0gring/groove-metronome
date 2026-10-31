@@ -51,6 +51,24 @@ and works offline. Every sound is synthesized live with the Web Audio API (no sa
   circle of 4ths (all 12 keys) over any groove.
 - **Bass tuner:** microphone tuner that tracks down to low B (5-string), plus reference notes B E A D G.
 
+## Practise your own music
+
+Import files into **My music** (they're saved on your device and reopen next time):
+
+| File | What you get |
+|---|---|
+| Text tab (`.txt`, or paste it in) | Playable. Rhythm is read from the spacing between bar lines (quantized to 16ths). Detects 4/5/6-string bass, guitar, drop/flat tunings. |
+| MusicXML (`.musicxml`, `.xml`, `.mxl`) | Playable with exact rhythm. Export from MuseScore, Guitar Pro, Sibelius, Finale… Picks the bass part automatically (switchable), keeps tab fingerings, file tempo, ties and pickup bars. |
+| PDF | Shown page by page next to the metronome, with page-turn buttons, tap-to-turn and auto page-turn every N bars. If the PDF contains tab as text, it's also playable. |
+
+While practising a piece you get a tab of the current bar **and the next one** (read ahead), the note lit up on
+the fretboard, a **loop from bar X to bar Y**, and everything else still works: practice speed, silent
+"you play" mode, call & response, gap trainer, count-in. The selected groove's drums play along when its
+meter matches the piece; otherwise you get the click.
+
+Printed notation in a PDF can't be turned into notes automatically (that needs optical music recognition) —
+export MusicXML from the program that made it instead.
+
 ## Get it on Android
 
 1. Merge to `main`, then in the GitHub repo go to **Settings → Pages → Build and deployment → Source: GitHub Actions**.
@@ -69,6 +87,7 @@ Any static file server works (ES modules need http, not `file://`):
 python3 -m http.server 8000   # then open http://localhost:8000
 node tests/grooves.test.mjs   # validate groove data & theory helpers
 node tests/tuner.test.mjs     # pitch detector accuracy on synthetic bass notes
+node tests/importers.test.mjs # ASCII tab parser and .mxl unzip (sample files in tests/fixtures/)
 ```
 
 ## Adding a groove
@@ -88,5 +107,10 @@ js/audio.js           synthesized drum kit and instruments
 js/grooves.js         groove library
 js/theory.js          pattern parsers, chord theory, melody & bass line generators
 js/tuner.js           microphone pitch detection for the tuner
+js/practice.js        "My music" library, piece view, PDF viewer
+js/importers.js       ASCII tab + MusicXML/.mxl parsers
+js/library.js         IndexedDB storage for imported files
+js/pdfview.js         PDF rendering / text extraction (loads vendor/pdfjs on demand)
+vendor/pdfjs/         pdf.js 4.10.38 legacy build (Apache-2.0)
 sw.js, manifest.webmanifest, icons/   PWA / offline / install
 ```
