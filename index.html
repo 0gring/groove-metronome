@@ -93,17 +93,17 @@
       <details id="omrSetup" class="omr-setup">
         <summary>Sheet music → MusicXML setup</summary>
         <p class="hint">Printed notation in a PDF is converted by <b>Audiveris</b> (free, open-source music recognition)
-          running as a GitHub Action in a <b>private</b> repository of yours, so your sheet music stays private. One-time setup:</p>
+          running as a GitHub Action in your <b>groove-metronome</b> repository. One-time setup:</p>
         <ol class="hint steps">
-          <li>Create a <b>private</b> GitHub repository (e.g. <code>groove-metronome-omr</code>) and copy into it the files from the
-            <a href="https://github.com/0gring/groove-metronome/tree/main/omr-repo" target="_blank" rel="noopener">omr-repo</a> folder.</li>
           <li>Create a <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">fine-grained token</a>:
-            <i>Repository access</i> → only that private repo; <i>Permissions</i> → <b>Contents: Read and write</b>.</li>
-          <li>Enter the private repository and the token below. The token is stored only on this device.</li>
+            <i>Repository access</i> → only your groove-metronome repository; <i>Permissions</i> → <b>Contents: Read and write</b>.</li>
+          <li>Enter the repository and the token below. The token is stored only on this device.</li>
         </ol>
+        <p class="hint">If the repository is public, the PDFs you convert and the results are public too. To keep them private,
+          copy <code>.github/</code> and <code>omr/</code> from the app repository into a private repository and enter that one instead.</p>
         <div class="field-row">
           <label>Repository (owner/name)
-            <input type="text" id="omrRepo" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="owner/groove-metronome-omr">
+            <input type="text" id="omrRepo" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="owner/groove-metronome">
           </label>
           <label>GitHub token
             <input type="password" id="omrToken" autocomplete="off" placeholder="github_pat_…">

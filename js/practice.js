@@ -461,12 +461,18 @@ export function initPractice(api) {
       const typed = $('omrToken').value.trim();
       const token = typed === '••••••••' ? omr.loadConfig().token : typed;
       if (!/^[\w.-]+\/[\w.-]+$/.test(repo) || !token) return setupMsg('Enter the repository as owner/name and paste a token.', 'err');
-      omr.saveConfig({ repo, token });
+      omr.saveConfig({ repo, token, allowPublic: false });
       $('omrRepo').value = repo;
       $('omrToken').value = '••••••••';
       setupMsg('Checking…');
       try {
-        setupMsg(await omr.testConnection({ repo, token }), 'ok');
+        const r = await omr.testConnection({ repo, token });
+        const allowPublic = r.isPublic
+          ? confirm(`${repo} is a public repository: the PDFs you convert and the results will be visible to anyone on GitHub. Use it anyway?`)
+          : false;
+        omr.saveConfig({ repo, token, allowPublic });
+        if (r.isPublic && !allowPublic) return setupMsg('Not using the public repository. Enter a private repository instead.', 'err');
+        setupMsg(r.message, 'ok');
         schedulePoll(false);
       } catch (e) {
         setupMsg(e.message, 'err');

@@ -21,13 +21,11 @@ export function saveConfig(cfg) {
   }
 }
 
-/**
- * Suggest the conversion repo name: "<owner>/groove-metronome-omr" when served from GitHub Pages.
- * (Never the app's own repo: that one is public, and uploads must go to a private repo.)
- */
+/** Suggest the app's own repo ("owner/repo") when served from GitHub Pages (owner.github.io/repo/). */
 export function guessRepo(loc = location) {
   const m = /^([a-z0-9-]+)\.github\.io$/i.exec(loc.hostname);
-  return m ? `${m[1]}/groove-metronome-omr` : '';
+  const repo = loc.pathname.split('/').filter(Boolean)[0];
+  return m && repo ? `${m[1]}/${repo}` : '';
 }
 
 export const isConfigured = (cfg = loadConfig()) => !!(cfg.repo && cfg.token);
@@ -68,26 +66,29 @@ function toBase64(buffer) {
   return btoa(bin);
 }
 
-const PUBLIC_MSG = (repo) =>
-  `${repo} is a public repository — anyone could see the sheet music you upload. Use a private repository for conversions.`;
-
-/** Refuse to upload to a public repository. */
-async function assertPrivate(cfg) {
+/** Uploads to a public repository need the user's one-time OK (cfg.allowPublic), given in setup. */
+async function assertUploadAllowed(cfg) {
   const info = await gh(cfg, '');
-  if (!info.private) throw new GhError(PUBLIC_MSG(cfg.repo));
+  if (!info.private && !cfg.allowPublic) {
+    throw new GhError(`${cfg.repo} is public. Open the setup panel and tap “Save & test” to confirm that uploads may be public.`);
+  }
 }
 
-/** Check repo access, that it is private, and that the workflow exists, before the first upload. */
+/** Check repo access and that the workflow exists. Returns { message, isPublic }. */
 export async function testConnection(cfg) {
-  await assertPrivate(cfg);
+  const info = await gh(cfg, '');
+  const isPublic = !info.private;
   const wf = await gh(cfg, 'contents/.github/workflows/omr.yml', { allow404: true });
-  if (!wf) return 'Connected, but this repository has no .github/workflows/omr.yml yet — copy the omr-repo/ files from the app repository into it.';
-  return `Connected to ${cfg.repo} (private). Ready to convert.`;
+  if (!wf) {
+    return { isPublic, message: `Connected to ${cfg.repo}, but it has no .github/workflows/omr.yml — copy the conversion workflow (.github/ and omr/ from the groove-metronome repository) into it.` };
+  }
+  const vis = isPublic ? 'public: converted sheet music is visible to anyone' : 'private';
+  return { isPublic, message: `Connected to ${cfg.repo} (${vis}). Ready to convert.` };
 }
 
 /** Upload a PDF; returns the job id. */
 export async function submit(cfg, jobId, pdfBuffer, displayName) {
-  await assertPrivate(cfg);
+  await assertUploadAllowed(cfg);
   await gh(cfg, `contents/omr/inbox/${jobId}.pdf`, {
     method: 'PUT',
     body: JSON.stringify({ message: `Convert “${displayName}” to MusicXML`, content: toBase64(pdfBuffer) }),
