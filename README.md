@@ -4,10 +4,13 @@ A metronome that plays **real grooves** — drums, bass, chords and rhythmic mel
 It's an installable web app (PWA): it runs in any modern browser, installs on Android like a native app,
 and works offline.
 
-**Sound:** recorded drums, percussion, electric piano and grand piano from the
-[Versilian Community Sample Library](https://github.com/sgossner/VCSL) (CC0), with velocity layers and
-round-robin; finger bass, upright bass and guitar from a Karplus-Strong plucked-string model; synthesized kick,
-synth bass, 808, organ, pad and leads. Mixed in stereo with room reverb and a soft limiter (~3 MB of samples).
+**Sound:** a recorded acoustic drum kit (kick, snare, cross-stick, hi-hat, ride, crash, toms) from
+[Virtuosity Drums](https://github.com/sfzinstruments/virtuosity_drums) (CC0), close and room mics blended;
+percussion, electric piano and grand piano from the
+[Versilian Community Sample Library](https://github.com/sgossner/VCSL) (CC0); velocity layers and round-robin
+throughout. Finger bass, upright bass and guitar use a Karplus-Strong plucked-string model; electronic styles
+(trap, house, drum & bass) use a synthesized kick; synth bass, 808, organ, pad and leads are synthesized.
+Mixed in stereo with room reverb and a soft limiter (~3 MB of samples).
 
 ## Grooves (26, each with 3 variations)
 
@@ -138,7 +141,7 @@ index.html            UI markup
 css/style.css         styles (mobile-first)
 js/app.js             scheduler, UI, practice tools
 js/audio.js           audio engine: samples, plucked strings, synths, reverb/limiter
-samples/              CC0 recorded drums, e-piano, piano (VCSL) + manifest
+samples/              CC0 recorded drum kit (Virtuosity Drums), percussion, e-piano, piano (VCSL) + manifest
 js/grooves.js         groove library
 js/theory.js          pattern parsers, chord theory, melody & bass line generators
 js/tuner.js           microphone pitch detection for the tuner

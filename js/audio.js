@@ -1,7 +1,8 @@
 // Audio engine.
-// - Drums & percussion: recorded samples from the Versilian Community Sample Library (CC0), with
-//   velocity layers and round-robin; synthesized fallbacks while samples load (or if they can't).
-// - Kick: synthesized (layered body, sub and click).
+// - Drum kit (kick, snare, cross-stick, hi-hat, ride, crash, toms): Virtuosity Drums (CC0), close and
+//   room microphones blended; percussion: Versilian Community Sample Library (CC0). Velocity layers and
+//   round-robin; synthesized fallbacks while samples load (or if they can't).
+// - Electronic kick (for trap / house / drum & bass): synthesized (layered body, sub and click).
 // - Finger / upright bass and guitar: Karplus-Strong plucked-string physical model.
 // - E-piano (TX81Z FM piano) and grand piano (Kawai): samples; synth fallback.
 // - Synth bass, 808, organ, pad and leads: subtractive / additive synthesis.
@@ -37,20 +38,21 @@ export const SOUNDS = {
 let rr = 0;
 const alt = (a, b) => (++rr % 2 ? a : b);
 const DRUM_SAMPLES = {
-  hhc: { pick: (v) => (v < 0.4 ? 'hhc-soft' : v >= 0.95 ? 'hhc-hard' : alt('hhc-1', 'hhc-2')), level: 0.62, pan: 0.3 },
-  hho: { pick: () => 'hho', level: 0.45, pan: 0.3 },
-  snare: { pick: (v) => (v < 0.4 ? 'snare-ghost' : v >= 0.95 ? 'snare-hard' : alt('snare-1', 'snare-2')), level: 0.85, pan: 0.05 },
-  rim: { pick: () => alt('rim-1', 'rim-2'), level: 0.6, pan: 0.05 },
-  clap: { pick: () => alt('clap-1', 'clap-2'), level: 0.6, pan: -0.05 },
-  tamb: { pick: (v) => (v >= 0.9 ? 'tamb-hard' : 'tamb-soft'), level: 0.42, pan: 0.45 },
-  shaker: { pick: () => alt('shaker-down', 'shaker-up'), level: 0.55, pan: 0.4 },
-  clave: { pick: () => 'clave', level: 0.5, pan: -0.25 },
-  cowbell: { pick: () => 'cowbell', level: 0.4, pan: 0.25 },
+  kick: { pick: (v) => (v < 0.4 ? 'kick-soft' : v >= 0.95 ? 'kick-hard' : alt('kick-1', 'kick-2')), level: 1.4, pan: 0 },
+  hhc: { pick: (v) => (v < 0.4 ? 'hhc-soft' : v >= 0.95 ? 'hhc-hard' : alt('hhc-1', 'hhc-2')), level: 1.75, pan: 0.3 },
+  hho: { pick: () => 'hho', level: 1.45, pan: 0.3 },
+  snare: { pick: (v) => (v < 0.4 ? 'snare-ghost' : v >= 0.95 ? 'snare-hard' : alt('snare-1', 'snare-2')), level: 3.1, pan: 0.05 },
+  rim: { pick: () => alt('rim-1', 'rim-2'), level: 1.2, pan: 0.05 },
+  clap: { pick: () => alt('clap-1', 'clap-2'), level: 0.85, pan: -0.05 },
+  tamb: { pick: (v) => (v >= 0.9 ? 'tamb-hard' : 'tamb-soft'), level: 0.6, pan: 0.45 },
+  shaker: { pick: () => alt('shaker-down', 'shaker-up'), level: 0.75, pan: 0.4 },
+  clave: { pick: () => 'clave', level: 0.7, pan: -0.25 },
+  cowbell: { pick: () => 'cowbell', level: 0.55, pan: 0.25 },
   conga: { pick: () => 'conga', level: 0.65, pan: -0.3 },
   tomH: { pick: () => 'tomH', level: 0.75, pan: 0.2 },
-  tomL: { pick: () => 'tomL', level: 0.8, pan: -0.2 },
-  crash: { pick: () => 'crash', level: 0.4, pan: -0.35 },
-  ride: { pick: () => 'ride', level: 0.5, pan: -0.3 },
+  tomL: { pick: () => 'tomL', level: 0.56, pan: -0.2 },
+  crash: { pick: () => 'crash', level: 0.28, pan: -0.35 },
+  ride: { pick: (v) => (v >= 0.95 ? 'ride-hard' : alt('ride-1', 'ride-2')), level: 0.45, pan: -0.3 },
 };
 const REVERB_SEND = { click: 0, drums: 0.1, bass: 0.02, chords: 0.22, melody: 0.2 };
 
@@ -275,7 +277,9 @@ export class AudioEngine {
 
   // ------------------------------------------------------------ drums
 
-  drum(name, t, vel) {
+  /** electronic: use the synthesized kick (for electronic styles) instead of the acoustic one. */
+  drum(name, t, vel, electronic = false) {
+    if (electronic && name === 'kick') return this.d_kick(t, vel, this.buses.drums);
     const map = DRUM_SAMPLES[name];
     const buf = map && this.samples[map.pick(vel)];
     if (buf) return this.playDrum(name, buf, t, vel, map);

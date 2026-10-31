@@ -232,7 +232,7 @@ export const GROOVES = [
     ],
   },
   {
-    id: 'trap', name: 'Trap', genre: 'Hip-Hop & Electronic', bpm: 140, beats: 4, sub: 4,
+    id: 'trap', kit: 'electronic', name: 'Trap', genre: 'Hip-Hop & Electronic', bpm: 140, beats: 4, sub: 4,
     drums: {
       hhc: 'x.x.x.x.x.xrx.t.',
       clap: '........X.......',
@@ -249,7 +249,7 @@ export const GROOVES = [
     ],
   },
   {
-    id: 'house', name: 'House', genre: 'Hip-Hop & Electronic', bpm: 124, beats: 4, sub: 4,
+    id: 'house', kit: 'electronic', name: 'House', genre: 'Hip-Hop & Electronic', bpm: 124, beats: 4, sub: 4,
     drums: {
       hho: '..x...x...x...x.',
       shaker: 'xoxoxoxoxoxoxoxo',
@@ -267,7 +267,7 @@ export const GROOVES = [
     ],
   },
   {
-    id: 'dnb', name: 'Drum & Bass', genre: 'Hip-Hop & Electronic', bpm: 172, beats: 4, sub: 4,
+    id: 'dnb', kit: 'electronic', name: 'Drum & Bass', genre: 'Hip-Hop & Electronic', bpm: 172, beats: 4, sub: 4,
     drums: {
       hhc: 'x.x.x.x.x.x.x.x.',
       snare: '....X..g.g..X...',

@@ -330,8 +330,9 @@ function scheduleStep(bar, s, t) {
       if (inFill && FILL_SKIP.has(name)) continue;
       const h = arr[abs % arr.length];
       if (!h) continue;
-      if (h.n === 1) audio.drum(name, at(tt), vj(h.v));
-      else for (let k = 0; k < h.n; k++) audio.drum(name, tt + (k * sd) / h.n, h.v * (k ? 0.75 : 1));
+      const elec = g.def.kit === 'electronic';
+      if (h.n === 1) audio.drum(name, at(tt), vj(h.v), elec);
+      else for (let k = 0; k < h.n; k++) audio.drum(name, tt + (k * sd) / h.n, h.v * (k ? 0.75 : 1), elec);
     }
   }
 
