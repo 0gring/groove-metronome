@@ -175,15 +175,30 @@ export function lcm(a, b) {
 }
 
 /**
+ * Positions (in grid steps, within one beat) for a note value.
+ * div: 1 = quarter notes, 2 = eighths, 4 = sixteenths, 0 = style default (null).
+ * On a triplet grid (sub 3) eighths are swung (steps 0 and 2) and sixteenths become triplets.
+ * When the groove's grid is too coarse (e.g. 16ths on an eighth-note grid) every step is used.
+ */
+export function beatPositions(sub, div) {
+  if (!div) return null;
+  if (div === 1 || sub === 1) return [0];
+  if (sub % div === 0) return Array.from({ length: div }, (_, k) => (k * sub) / div);
+  if (sub === 3) return div === 2 ? [0, 2] : [0, 1, 2];
+  return Array.from({ length: sub }, (_, k) => k);
+}
+
+/**
  * Generate a bass line in a given style. Returns a token string covering 1 bar
  * (2 bars for short bars).
- *   roots  - root on every beat
+ *   roots  - root on every note
  *   r58    - root, fifth, octave, fifth
  *   kick   - rhythm locked to the kick drum
- *   walk   - walking quarter notes with a chromatic approach into the next chord
+ *   walk   - walking line with a chromatic approach into the next chord
  *   random - kick-based groove with extra syncopations, octaves and dead notes
+ * div sets the note values (see beatPositions); 0 keeps each style's default rhythm.
  */
-export function generateBass({ beats, sub, kick }, style, rng = Math.random) {
+export function generateBass({ beats, sub, kick }, style, rng = Math.random, div = 0) {
   const spb = beats * sub;
   const len = spb <= 8 ? spb * 2 : spb;
   const t = Array(len).fill('.');
@@ -193,29 +208,42 @@ export function generateBass({ beats, sub, kick }, style, rng = Math.random) {
   };
   const nBeats = len / sub;
   const pick = (arr) => arr[Math.floor(rng() * arr.length)];
+  const P = beatPositions(sub, div);
+  const onGrid = (i) => !P || P.includes(i % sub);
+  // an octave above (walking "skip"); approach / dead notes stay as they are
+  const up = (tok) => (tok === 'A' || tok === 'x' || tok.startsWith('^') ? tok : tok === '8' ? 'R' : `^${tok}`);
 
-  if (style === 'roots') {
-    for (let b = 0; b < nBeats; b++) put(b * sub, 'R', sub);
-  } else if (style === 'r58') {
+  if (style === 'roots' || style === 'r58' || style === 'walk') {
+    const per = P ?? [0];
+    const n = per.length;
     const seq = ['R', 'F', '8', 'F'];
-    for (let b = 0; b < nBeats; b++) put(b * sub, seq[(b % beats) % 4], sub);
-  } else if (style === 'walk') {
     const mids = [['T', 'F'], ['2', 'T'], ['8', 'F'], ['F', '6'], ['T', '2'], ['S', 'F']];
     for (let bar = 0; bar < len / spb; bar++) {
       const m = pick(mids);
       for (let b = 0; b < beats; b++) {
-        let tok = b === 0 ? 'R' : b === beats - 1 ? 'A' : m[(b - 1) % 2];
-        if (beats === 1) tok = 'R';
-        put(bar * spb + b * sub, tok, sub);
+        const lastBeat = b === beats - 1 && beats > 1;
+        let beatTok = 'R';
+        if (style === 'walk' && b > 0) beatTok = lastBeat && n === 1 ? 'A' : m[(b - 1) % 2];
+        per.forEach((p, k) => {
+          let tok;
+          if (style === 'roots') tok = 'R';
+          else if (style === 'r58') tok = seq[(b * n + k) % 4];
+          else if (k === 0) tok = beatTok;
+          else if (n === 2) tok = lastBeat ? 'A' : up(beatTok);
+          else if (k === n - 1) tok = lastBeat ? 'A' : n === 3 ? up(beatTok) : 'x';
+          else tok = k === 2 ? up(beatTok) : 'x';
+          const next = k + 1 < n ? per[k + 1] : sub;
+          put(bar * spb + b * sub + p, tok, tok === 'x' ? 1 : next - p);
+        });
       }
     }
   } else {
     const on = new Set([0]);
-    for (let i = 0; i < len; i++) if (kick && kick[i % kick.length] !== '.') on.add(i);
+    for (let i = 0; i < len; i++) if (kick && kick[i % kick.length] !== '.' && onGrid(i)) on.add(i);
     if (on.size === 1) for (let b = 0; b < nBeats; b++) on.add(b * sub);
     if (style === 'random') {
       for (const i of [...on]) if (i !== 0 && rng() < 0.2) on.delete(i);
-      for (let i = 1; i < len; i++) if (!on.has(i) && rng() < (i % sub === 0 ? 0.25 : 0.14)) on.add(i);
+      for (let i = 1; i < len; i++) if (onGrid(i) && !on.has(i) && rng() < (i % sub === 0 ? 0.25 : 0.14)) on.add(i);
     }
     const ons = [...on].sort((a, b) => a - b);
     const cycle = ['R', 'R', '8', 'F'];

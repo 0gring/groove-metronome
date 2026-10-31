@@ -46,6 +46,8 @@ and works offline. Every sound is synthesized live with the Web Audio API (no sa
   names. The note the bass is playing lights up live, so you see the line move across the neck.
 - **Bass line styles:** groove's own line, roots, root–5th–octave, *lock to the kick*, walking lines with
   chromatic approach notes, and 🎲 random groove lines.
+- **Note values** for each style: quarter, eighth or 16th notes (swung eighths / triplets on triplet-feel grooves).
+  Walking lines in 8ths/16ths add octave skips and ghost notes; *lock to the kick* keeps only the kick hits on that rhythm.
 - **Drums: kick only / kick + snare** to practise locking in with the kick drum.
 - **Chord changes:** swap in a one-chord vamp, I–IV–V, I–vi–IV–V, ii–V–I, minor, 12-bar blues or the
   circle of 4ths (all 12 keys) over any groove.

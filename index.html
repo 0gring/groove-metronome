@@ -210,10 +210,19 @@
             <option value="random">🎲 Random line</option>
           </select>
         </label>
+        <label>Note values
+          <select id="bassFeel">
+            <option value="0">Style default</option>
+            <option value="1">♩ Quarter notes</option>
+            <option value="2">♪ Eighth notes</option>
+            <option value="4">𝅘𝅥𝅯 16th notes</option>
+          </select>
+        </label>
         <label>Chord changes
           <select id="progSelect"></select>
         </label>
       </div>
+      <p id="bassFeelHint" class="hint groove-only" aria-live="polite"></p>
       <div class="btn-row groove-only">
         <button id="newBass">🎲 New bass line</button>
       </div>

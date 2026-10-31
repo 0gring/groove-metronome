@@ -1,5 +1,5 @@
 // Offline support: cache the app shell, serve from cache, refresh in the background.
-const CACHE = 'groove-metronome-v8';
+const CACHE = 'groove-metronome-v9';
 const ASSETS = [
   './', 'index.html', 'css/style.css', 'js/app.js', 'js/audio.js', 'js/grooves.js', 'js/theory.js', 'js/tuner.js', 'js/practice.js', 'js/importers.js', 'js/library.js', 'js/pdfview.js', 'js/omr.js',
   'vendor/pdfjs/pdf.min.mjs', 'vendor/pdfjs/pdf.worker.min.mjs',

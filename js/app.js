@@ -1,7 +1,7 @@
 import { AudioEngine, SOUNDS } from './audio.js';
 import { GROOVES, DRUM_ORDER, DRUM_LABELS, PROGRESSIONS } from './grooves.js';
 import {
-  QUALITIES, parseDrum, parseLine, parseComp, parseProg, generateMelody, generateBass, resolveNote, cleanDrum, mod, lcm,
+  QUALITIES, parseDrum, parseLine, parseComp, parseProg, generateMelody, generateBass, beatPositions, resolveNote, cleanDrum, mod, lcm,
 } from './theory.js';
 import { Tuner } from './tuner.js';
 import { initPractice } from './practice.js';
@@ -64,6 +64,7 @@ const DEFAULTS = {
   bassMode: 'play',
   drumMode: 'full',
   bassStyle: 'orig',
+  bassFeel: 0,
   prog: 'default',
   strings: 4,
   fbMode: 'chord',
@@ -155,7 +156,7 @@ function adaptForPiece(g) {
 
 function makeBass(g) {
   if (state.bassStyle === 'orig') return g.def.bass ? parseLine(g.def.bass) : null;
-  return parseLine(generateBass({ beats: g.beats, sub: g.sub, kick: g.drumStr.kick }, state.bassStyle));
+  return parseLine(generateBass({ beats: g.beats, sub: g.sub, kick: g.drumStr.kick }, state.bassStyle, Math.random, state.bassFeel));
 }
 
 function makeProg(def) {
@@ -492,6 +493,8 @@ let lastChordBar = null;
 
 function renderBassPanel() {
   $('bassStyle').value = state.bassStyle;
+  $('bassFeel').value = String(state.bassFeel);
+  updateFeelHint();
   $('bassStyle').options[0].disabled = !cur.def.bass;
   lastChordBar = null;
   showChordNow(0);
@@ -726,6 +729,22 @@ function highlightTab(i) {
   litTab?.classList.remove('now');
   next?.classList.add('now');
   litTab = next;
+}
+
+/** Explain how the chosen note values map onto this groove's grid. */
+function updateFeelHint() {
+  const div = state.bassFeel;
+  let hint = '';
+  if (div && state.bassStyle === 'orig') hint = '';
+  else if (div && (state.bassStyle === 'kick' || state.bassStyle === 'random')) hint = 'Only kick hits that fall on this rhythm are used.';
+  if (div && state.bassStyle !== 'orig') {
+    const n = beatPositions(cur.sub, div).length;
+    if (cur.sub === 3 && div === 2) hint = `Swung eighths (this groove has a triplet feel). ${hint}`;
+    else if (cur.sub === 3 && div === 4) hint = `Triplets (this groove has a triplet feel). ${hint}`;
+    else if (n < div) hint = `This groove's grid only goes down to ${cur.sub === 2 ? 'eighth' : 'quarter'} notes, so those are used. ${hint}`;
+  }
+  $('bassFeelHint').textContent = hint.trim();
+  $('bassFeelHint').hidden = !hint.trim();
 }
 
 function refreshBass() {
@@ -1102,6 +1121,12 @@ function init() {
   };
   $('bassStyle').onchange = (e) => {
     state.bassStyle = e.target.value;
+    refreshBass();
+  };
+  $('bassFeel').onchange = (e) => {
+    state.bassFeel = Number(e.target.value);
+    // the groove's own line has a fixed rhythm: switch to a style that can follow the note values
+    if (state.bassFeel && state.bassStyle === 'orig') state.bassStyle = 'roots';
     refreshBass();
   };
   $('newBass').onclick = () => {

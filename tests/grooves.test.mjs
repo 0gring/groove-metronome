@@ -1,7 +1,7 @@
 // Run: node tests/grooves.test.mjs
 import assert from 'node:assert/strict';
 import { GROOVES, DRUM_ORDER, PROGRESSIONS } from '../js/grooves.js';
-import { parseDrum, parseLine, parseComp, parseProg, generateMelody, generateBass, resolveNote, parseNoteToken, cleanDrum } from '../js/theory.js';
+import { parseDrum, parseLine, parseComp, parseProg, generateMelody, generateBass, beatPositions, resolveNote, parseNoteToken, cleanDrum } from '../js/theory.js';
 
 let n = 0;
 const ids = new Set();
@@ -25,6 +25,21 @@ for (const g of GROOVES) {
     }
   }
   for (const style of ['roots', 'r58', 'kick', 'walk', 'random']) {
+    for (const div of [1, 2, 4]) {
+      const kick = g.drums.kick ? cleanDrum(g.drums.kick) : undefined;
+      const allowed = beatPositions(g.sub, div);
+      for (let i = 0; i < 10; i++) {
+        const line = parseLine(generateBass({ beats: g.beats, sub: g.sub, kick }, style, Math.random, div));
+        check(`bass ${style}/${div}`, line.length);
+        assert.ok(line.events[0], `${g.id} ${style}/${div}: must start on beat 1`);
+        line.events.forEach((e, pos) => {
+          if (e) assert.ok(allowed.includes(pos % g.sub), `${g.id} ${style}/${div}: note at step ${pos} is off the grid`);
+        });
+        if (style === 'roots' || style === 'r58') {
+          assert.equal(line.events.filter(Boolean).length, (line.length / g.sub) * allowed.length, `${g.id} ${style}/${div}: one note per grid position`);
+        }
+      }
+    }
     for (let i = 0; i < 20; i++) {
       const kick = g.drums.kick ? cleanDrum(g.drums.kick) : undefined;
       const line = parseLine(generateBass({ beats: g.beats, sub: g.sub, kick }, style));
@@ -36,6 +51,11 @@ for (const g of GROOVES) {
 }
 for (const p of PROGRESSIONS) if (p.chords) parseProg(p.chords);
 assert.ok(parseNoteToken('A').approach);
+assert.deepEqual(beatPositions(4, 2), [0, 2]);
+assert.deepEqual(beatPositions(3, 2), [0, 2]); // swung eighths on a triplet grid
+assert.deepEqual(beatPositions(2, 4), [0, 1]); // grid too coarse for 16ths: use every step
+assert.equal(beatPositions(4, 0), null);
+assert.equal(generateBass({ beats: 4, sub: 4 }, 'r58', Math.random, 2), 'R - F - 8 - F - R - F - 8 - F -');
 assert.equal(resolveNote(parseNoteToken('T'), 'm7'), 3);
 assert.equal(resolveNote(parseNoteToken('T'), '7'), 4);
 assert.equal(resolveNote(parseNoteToken('S'), 'maj7'), 11);
