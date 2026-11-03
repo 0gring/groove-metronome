@@ -4,13 +4,23 @@ A metronome that plays **real grooves** — drums, bass, chords and rhythmic mel
 It's an installable web app (PWA): it runs in any modern browser, installs on Android like a native app,
 and works offline.
 
-**Sound:** a recorded acoustic drum kit (kick, snare, cross-stick, hi-hat, ride, crash, toms) from
-[Virtuosity Drums](https://github.com/sfzinstruments/virtuosity_drums) (CC0), close and room mics blended;
-percussion, electric piano and grand piano from the
-[Versilian Community Sample Library](https://github.com/sgossner/VCSL) (CC0); velocity layers and round-robin
-throughout. Finger bass, upright bass and guitar use a Karplus-Strong plucked-string model; electronic styles
-(trap, house, drum & bass) use a synthesized kick; synth bass, 808, organ, pad and leads are synthesized.
-Mixed in stereo with room reverb and a soft limiter (~3 MB of samples).
+**Sound:** recorded instruments throughout (all CC0 / public domain):
+
+| Sound | Recording |
+|---|---|
+| Drum kit (kick, snare, cross-stick, hi-hat, ride, crash, toms) | [Virtuosity Drums](https://github.com/sfzinstruments/virtuosity_drums), close + room mics blended |
+| Percussion (tambourine, shaker, claves, cowbell, conga, claps) | [VCSL](https://github.com/sgossner/VCSL) |
+| Finger bass | Squier Jazz Bass — [Growlybass](https://github.com/sfzinstruments/karoryfer.growlybass) (sustained + staccato) |
+| Upright bass | Double bass pizzicato + dead notes — [Meatbass](https://github.com/sfzinstruments/karoryfer.meatbass) |
+| Guitar | Gretsch hollow-body — [Black And Green Guitars](https://github.com/sfzinstruments/karoryfer.black-and-green-guitars) (ringing + short chops) |
+| E-piano, grand piano, tenor sax, vibes | [VCSL](https://github.com/sgossner/VCSL) |
+| Trumpet, flute | [VSCO 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) |
+
+Short notes use the recorded staccato takes, every note is tuned from its measured pitch, and velocity
+changes level and tone. Trap, house and drum & bass use a synthesized kick; synth bass, 808, organ, pad and the
+square/saw/pluck/bell leads are synthesized. Mixed in stereo with room reverb and a soft limiter. Drums and keys
+(~3 MB) are cached for offline use when the app installs; each other instrument (~0.5–1.5 MB) downloads the
+first time it's used and is then available offline too.
 
 ## Grooves (26, each with 3 variations)
 
@@ -141,7 +151,8 @@ index.html            UI markup
 css/style.css         styles (mobile-first)
 js/app.js             scheduler, UI, practice tools
 js/audio.js           audio engine: samples, plucked strings, synths, reverb/limiter
-samples/              CC0 recorded drum kit (Virtuosity Drums), percussion, e-piano, piano (VCSL) + manifest
+samples/              CC0 recordings: drum kit, percussion, e-piano, piano (+ manifest)
+samples/inst/         CC0 recordings: finger & upright bass, guitar, trumpet, flute, sax, vibes (+ manifest)
 js/grooves.js         groove library
 js/theory.js          pattern parsers, chord theory, melody & bass line generators
 js/tuner.js           microphone pitch detection for the tuner

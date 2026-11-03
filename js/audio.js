@@ -12,23 +12,25 @@ const mtof = (m) => 440 * 2 ** ((m - 69) / 12);
 
 export const SOUNDS = {
   bass: {
-    electric: { label: 'Finger bass', ks: { bright: 0.42, pick: 0.16, decay: 0.997, lp: 1500, sub: 0.35, gain: 1.7, r: 0.07 }, waves: [{ type: 'sawtooth' }, { type: 'sine', gain: 0.8 }], cutoff: 260, cutEnv: 1300, q: 4, a: 0.004, d: 0.2, s: 0.55, r: 0.05, gain: 0.85 },
+    electric: { label: 'Finger bass', inst: 'fbass', ks: { bright: 0.42, pick: 0.16, decay: 0.997, lp: 1500, sub: 0.35, gain: 1.7, r: 0.07 }, waves: [{ type: 'sawtooth' }, { type: 'sine', gain: 0.8 }], cutoff: 260, cutEnv: 1300, q: 4, a: 0.004, d: 0.2, s: 0.55, r: 0.05, gain: 0.85 },
     synth: { label: 'Synth', waves: [{ type: 'square' }, { type: 'sawtooth', detune: 10 }], cutoff: 300, cutEnv: 2400, q: 9, a: 0.003, d: 0.14, s: 0.45, r: 0.04, gain: 0.6 },
-    upright: { label: 'Upright', ks: { bright: 0.22, pick: 0.28, decay: 0.991, lp: 800, sub: 0.45, thump: 0.5, gain: 1.5, r: 0.12 }, waves: [{ type: 'triangle' }, { type: 'sine', gain: 0.7 }], cutoff: 700, cutEnv: 600, q: 1, a: 0.008, d: 0.35, s: 0.15, r: 0.1, gain: 1.1 },
+    upright: { label: 'Upright', inst: 'upright', ks: { bright: 0.22, pick: 0.28, decay: 0.991, lp: 800, sub: 0.45, thump: 0.5, gain: 1.5, r: 0.12 }, waves: [{ type: 'triangle' }, { type: 'sine', gain: 0.7 }], cutoff: 700, cutEnv: 600, q: 1, a: 0.008, d: 0.35, s: 0.15, r: 0.1, gain: 1.1 },
     '808': { label: '808', waves: [{ type: 'sine' }], cutoff: 3000, q: 0.5, a: 0.002, d: 0.8, s: 0.75, r: 0.2, glide: 1.6, drive: true, gain: 0.9 },
   },
   chords: {
     epiano: { label: 'E-piano', sampled: 'ep', r: 0.3, waves: [{ type: 'sine' }, { type: 'sine', mult: 2, gain: 0.4, decay: 0.3 }, { type: 'sine', mult: 7, gain: 0.08, decay: 0.05 }], cutoff: 6000, a: 0.003, d: 0.9, s: 0.25, r: 0.25, gain: 0.45 },
     organ: { label: 'Organ', waves: [{ type: 'sine' }, { type: 'sine', mult: 2, gain: 0.5 }, { type: 'sine', mult: 3, gain: 0.3 }, { type: 'sine', mult: 4, gain: 0.15 }], cutoff: 5000, a: 0.008, d: 0.05, s: 1, r: 0.05, gain: 0.28 },
     piano: { label: 'Piano', sampled: 'piano', r: 0.35, waves: [{ type: 'triangle' }, { type: 'sine', mult: 2, gain: 0.3, decay: 0.4 }], cutoff: 5000, a: 0.002, d: 1.2, s: 0.2, r: 0.3, gain: 0.4 },
-    guitar: { label: 'Guitar', ks: { bright: 0.75, pick: 0.13, decay: 0.994, lp: 4200, hp: 140, gain: 2.2, r: 0.06 }, waves: [{ type: 'sawtooth' }], cutoff: 900, cutEnv: 2500, q: 2, a: 0.002, d: 0.14, s: 0.2, r: 0.06, gain: 0.32, strum: 0.009 },
+    guitar: { label: 'Guitar', inst: 'guitar', ks: { bright: 0.75, pick: 0.13, decay: 0.994, lp: 4200, hp: 140, gain: 2.2, r: 0.06 }, waves: [{ type: 'sawtooth' }], cutoff: 900, cutEnv: 2500, q: 2, a: 0.002, d: 0.14, s: 0.2, r: 0.06, gain: 0.32, strum: 0.009 },
     pad: { label: 'Pad', waves: [{ type: 'sawtooth', detune: -9 }, { type: 'sawtooth', detune: 9 }], cutoff: 1100, q: 1, a: 0.25, d: 0.4, s: 0.8, r: 0.5, gain: 0.3 },
   },
   melody: {
     square: { label: 'Square lead', waves: [{ type: 'square' }], cutoff: 2600, q: 1, a: 0.005, d: 0.15, s: 0.6, r: 0.06, gain: 0.22 },
     saw: { label: 'Saw lead', waves: [{ type: 'sawtooth', detune: -7 }, { type: 'sawtooth', detune: 7 }], cutoff: 2800, cutEnv: 1500, q: 2, a: 0.005, d: 0.2, s: 0.6, r: 0.08, gain: 0.18 },
-    brass: { label: 'Brass', waves: [{ type: 'sawtooth' }, { type: 'sawtooth', detune: 6 }], cutoff: 500, cutEnv: 2200, fa: 0.06, q: 1.5, a: 0.03, d: 0.25, s: 0.7, r: 0.08, gain: 0.2 },
-    flute: { label: 'Flute', waves: [{ type: 'sine' }, { type: 'triangle', mult: 2, gain: 0.15 }], cutoff: 4000, a: 0.05, d: 0.2, s: 0.85, r: 0.1, vibrato: { rate: 5, depth: 12, delay: 0.15 }, gain: 0.45 },
+    brass: { label: 'Trumpet', inst: 'trumpet', waves: [{ type: 'sawtooth' }, { type: 'sawtooth', detune: 6 }], cutoff: 500, cutEnv: 2200, fa: 0.06, q: 1.5, a: 0.03, d: 0.25, s: 0.7, r: 0.08, gain: 0.2 },
+    flute: { label: 'Flute', inst: 'flute', waves: [{ type: 'sine' }, { type: 'triangle', mult: 2, gain: 0.15 }], cutoff: 4000, a: 0.05, d: 0.2, s: 0.85, r: 0.1, vibrato: { rate: 5, depth: 12, delay: 0.15 }, gain: 0.45 },
+    sax: { label: 'Tenor sax', inst: 'sax', waves: [{ type: 'sawtooth' }, { type: 'square', gain: 0.4 }], cutoff: 900, cutEnv: 1400, fa: 0.04, q: 2, a: 0.03, d: 0.25, s: 0.7, r: 0.1, gain: 0.18 },
+    vibes: { label: 'Vibes', inst: 'vibes', waves: [{ type: 'sine' }, { type: 'sine', mult: 4, gain: 0.25, decay: 0.12 }], cutoff: 8000, a: 0.002, d: 1.4, s: 0, r: 0.6, gain: 0.4, vibrato: { rate: 5.5, depth: 6, delay: 0 } },
     bell: { label: 'Bell', waves: [{ type: 'sine' }, { type: 'sine', mult: 2.76, gain: 0.35, decay: 0.4 }, { type: 'sine', mult: 5.4, gain: 0.2, decay: 0.15 }], cutoff: 8000, a: 0.002, d: 1.2, s: 0, r: 0.4, gain: 0.4 },
     pluck: { label: 'Pluck', waves: [{ type: 'sawtooth' }], cutoff: 500, cutEnv: 4000, q: 3, a: 0.002, d: 0.18, s: 0.1, r: 0.1, gain: 0.3 },
   },
@@ -53,6 +55,17 @@ const DRUM_SAMPLES = {
   tomL: { pick: () => 'tomL', level: 0.56, pan: -0.2 },
   crash: { pick: () => 'crash', level: 0.28, pan: -0.35 },
   ride: { pick: (v) => (v >= 0.95 ? 'ride-hard' : alt('ride-1', 'ride-2')), level: 0.45, pan: -0.3 },
+};
+// Sampled instruments (samples/inst/<name>/): level, release time, stereo position, and when to use
+// the short (staccato) takes instead of the ringing ones.
+const INST = {
+  fbass: { level: 3.0, r: 0.07, stacBelow: 0.2, tone: [700, 4500] },
+  upright: { level: 1.65, r: 0.12, tone: [600, 3500] },
+  guitar: { level: 1.6, r: 0.08, stacBelow: 0.22, tone: [1500, 8000] },
+  trumpet: { level: 0.75, r: 0.12, stacBelow: 0.18, pan: 0.15 },
+  flute: { level: 0.8, r: 0.12, stacBelow: 0.16, pan: -0.15 },
+  sax: { level: 0.8, r: 0.12, stacBelow: 0.18, pan: 0.1 },
+  vibes: { level: 0.55, r: 0.6, pan: -0.1 },
 };
 const REVERB_SEND = { click: 0, drums: 0.1, bass: 0.02, chords: 0.22, melody: 0.2 };
 
@@ -200,6 +213,79 @@ export class AudioEngine {
       return false;
     });
     return this.loading;
+  }
+
+  /** Load one sampled instrument on first use. Returns true when ready. */
+  instrument(name) {
+    this.inst ??= {};
+    const cur = this.inst[name];
+    if (cur?.ready) return true;
+    if (!cur) {
+      this.inst[name] = { ready: false };
+      (async () => {
+        this.instManifest ??= fetch('samples/inst/manifest.json').then((r) => r.json());
+        const m = (await this.instManifest)[name];
+        const ctx = this.ctx;
+        const get = async (file) => {
+          const res = await fetch(`samples/inst/${name}/${file}`);
+          if (!res.ok) throw new Error(`${name}/${file}: HTTP ${res.status}`);
+          const data = await res.arrayBuffer();
+          return new Promise((resolve, reject) => ctx.decodeAudioData(data, resolve, reject));
+        };
+        const layer = (art) => Promise.all((m[art] ?? []).map(async ([file, pitch]) => ({ midi: pitch, buffer: await get(`${art}-${file}.flac`) })));
+        const [sus, stac, dead] = await Promise.all([layer('sus'), layer('stac'), Promise.all((m.dead ?? []).map(get))]);
+        Object.assign(this.inst[name], { sus, stac, dead, ready: true });
+      })().catch((e) => {
+        console.warn(`Instrument ${name} unavailable, using the built-in sound:`, e.message);
+        this.inst[name].failed = true;
+      });
+    }
+    return false;
+  }
+
+  /** Play a sampled instrument note (falls back to the caller's synth if it isn't loaded yet). */
+  playInst(busName, name, t, midi, dur, vel, { dead = false, pan = 0 } = {}) {
+    if (!this.instrument(name)) return false;
+    const ctx = this.ctx;
+    const I = this.inst[name];
+    const cfg = INST[name];
+    let list = I.sus;
+    let rate = 1;
+    let buf;
+    if (dead && I.dead.length) {
+      buf = I.dead[++rr % I.dead.length];
+    } else {
+      if ((dead || (cfg.stacBelow && dur < cfg.stacBelow)) && I.stac.length) list = I.stac;
+      let best = list[0];
+      for (const k of list) if (Math.abs(k.midi - midi) < Math.abs(best.midi - midi)) best = k;
+      buf = best.buffer;
+      rate = 2 ** ((midi - best.midi) / 12);
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = rate;
+    const amp = ctx.createGain();
+    const peak = cfg.level * vel ** 1.2;
+    const hold = dead ? 0.05 : Math.max(dur, 0.04);
+    amp.gain.setValueAtTime(peak, t);
+    amp.gain.setTargetAtTime(0, t + hold, (dead ? 0.02 : cfg.r) / 3);
+    let node = src;
+    if (cfg.tone || dead) {
+      // softer notes are darker; dead notes are muffled thumps
+      const [lo, hi] = cfg.tone ?? [500, 500];
+      node = node.connect(this.filter('lowpass', dead ? 600 : lo + (hi - lo) * vel, 0.6));
+    }
+    node = node.connect(amp);
+    const p = pan || cfg.pan || 0;
+    if (p) {
+      const pn = ctx.createStereoPanner();
+      pn.pan.value = p;
+      node = node.connect(pn);
+    }
+    node.connect(this.buses[busName]);
+    src.start(t);
+    src.stop(t + hold + cfg.r * 3 + 0.05);
+    return true;
   }
 
   async resume() {
@@ -588,6 +674,7 @@ export class AudioEngine {
 
   bass(t, midi, dur, vel, sound, dead = false) {
     const p = SOUNDS.bass[sound] ?? SOUNDS.bass.electric;
+    if (p.inst && this.playInst('bass', p.inst, t, midi, dur, vel, { dead })) return;
     if (p.ks) return this.ksVoice('bass', sound, p, t, midi, dur, vel, { dead });
     if (dead) this.voice('bass', { ...p, cutoff: 350, cutEnv: 300, s: 0, d: 0.03, r: 0.02, glide: 0 }, t, midi, 0.03, vel * 0.7);
     else this.voice('bass', p, t, midi, dur, vel);
@@ -600,6 +687,7 @@ export class AudioEngine {
       const at = t + i * (p.strum ?? 0);
       const pan = (i / Math.max(1, midis.length - 1) - 0.5) * 0.5; // spread the chord across the stereo field
       if (p.sampled && this.sampledKey('chords', p.sampled, p, at, m, dur, per, pan)) return;
+      if (p.inst && this.playInst('chords', p.inst, at, m, dur, per, { pan })) return;
       if (p.ks) return this.ksVoice('chords', 'guitar', p, at, m, dur, per, { pan });
       this.voice('chords', p, at, m, dur, per);
     });
@@ -607,6 +695,7 @@ export class AudioEngine {
 
   melody(t, midi, dur, vel, sound) {
     const p = SOUNDS.melody[sound] ?? SOUNDS.melody.square;
+    if (p.inst && this.playInst('melody', p.inst, t, midi, dur, vel)) return;
     this.voice('melody', p, t, midi, dur, vel);
   }
 }

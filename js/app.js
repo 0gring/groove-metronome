@@ -384,6 +384,7 @@ function scheduleStep(bar, s, t) {
 async function start() {
   audio.init();
   audio.loadSamples(); // recorded drums & keys load in the background; synth sounds play until then
+  warmSounds();
   applyMix();
   const resumed = audio.resume();
   await resumed;
@@ -944,6 +945,7 @@ function renderMixer() {
       sel.value = state.sounds[layer.id];
       sel.onchange = () => {
         state.sounds[layer.id] = sel.value;
+        warmSounds();
         save();
       };
       row.append(sel);
@@ -953,9 +955,19 @@ function renderMixer() {
 }
 
 function renderMixerDefaults() {
+  warmSounds();
   for (const layer of ['bass', 'chords', 'melody']) {
     const sel = $(`sound-${layer}`);
     if (sel) sel.options[0].text = `Auto (${SOUNDS[layer][cur.sounds[layer]].label})`;
+  }
+}
+
+/** Start loading the recorded instruments the current sounds use (they load once, then stay cached). */
+function warmSounds() {
+  if (!audio.ctx) return;
+  for (const layer of ['bass', 'chords', 'melody']) {
+    const p = SOUNDS[layer][soundFor(layer)];
+    if (p?.inst) audio.instrument(p.inst);
   }
 }
 
