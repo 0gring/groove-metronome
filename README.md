@@ -33,7 +33,7 @@ waits until ready; a groove or sound change while playing switches only once its
 is light enough for phones: one-oscillator organ with a shared Leslie, monophonic bass and horns, chords that
 release the previous chord, a short reverb, and headroom so the limiter never distorts.
 
-## Grooves (41, each with 5 variations)
+## Grooves (49, each with 5 variations)
 
 | Style | Grooves |
 |---|---|
@@ -48,6 +48,7 @@ release the previous chord, a short reverb, and headroom so the limiter never di
 | Ballads & 3s | 6/8 Ballad, Waltz 3/4 |
 | Odd Meters | 5/4 (3+2), 7/8 (2+2+3) |
 | Country & Gospel | Country Train Beat, Gospel Shuffle |
+| Rock Eras | 60s British Invasion, 60s Surf, 70s Hard-Rock Riff, 70s Southern-Rock Shuffle, 70s Arena Rock, 80s New Wave, 90s Grunge, 90s Britpop — original riffs in each era's style |
 
 Every groove has a main pattern (A) and four variations (B–E), e.g. Rock *Push* / *Ride*, Funk *16th hats* /
 *Open hats*, Bossa *2-3 clave* / *Ride*, Reggae *Steppers* / *Rockers*. **Mix** plays A A A B, A A A C, … A A A E, and
@@ -94,8 +95,9 @@ Import files into **My music** (they're saved on your device and reopen next tim
 
 | File | What you get |
 |---|---|
-| Text tab (`.txt`, or paste it in) | Playable. Rhythm is read from the spacing between bar lines (quantized to 16ths). Detects 4/5/6-string bass, guitar, drop/flat tunings. |
-| MusicXML (`.musicxml`, `.xml`, `.mxl`) | Playable with exact rhythm. Export from MuseScore, Guitar Pro, Sibelius, Finale… Picks the bass part automatically (switchable), keeps tab fingerings, file tempo, ties and pickup bars. |
+| Text tab (`.txt`, or paste it in) | Playable. Rhythm is read from the spacing between bar lines (quantized to 16ths). Detects 4/5/6-string bass, guitar, drop/flat tunings. Reads Ultimate-Guitar-style extras: section labels (`[Verse]`, `Chorus:`, `Intro`) become buttons that loop that part, chord names written above the tab are played by the chords layer and shown bar by bar, and repeat marks (`x4`, `(x2)`, `repeat 3 times`) on a block or a section are played out. |
+| Guitar Pro 7/8 (`.gp`) | Playable with exact rhythm. Picks the bass track automatically (switchable), keeps string/fret fingerings, tuning, capo, ties, dead notes, triplets, file tempo, repeats and alternate endings, section markers (loop buttons) and chord names. Older `.gp5`/`.gp4`/`.gpx`: open in MuseScore (free) or TuxGuitar and export MusicXML. |
+| MusicXML (`.musicxml`, `.xml`, `.mxl`) | Playable with exact rhythm. Export from MuseScore, Sibelius, Finale… Picks the bass part automatically (switchable), keeps tab fingerings, file tempo, ties and pickup bars. |
 | PDF | Shown page by page next to the metronome, with page-turn buttons, tap-to-turn and auto page-turn every N bars. If the PDF contains tab as text, it's also playable. |
 
 While practising a piece you get a tab of the current bar **and the next one** (read ahead), the note lit up on
@@ -156,7 +158,7 @@ Any static file server works (ES modules need http, not `file://`):
 python3 -m http.server 8000   # then open http://localhost:8000
 node tests/grooves.test.mjs   # validate groove data & theory helpers
 node tests/tuner.test.mjs     # pitch detector accuracy on synthetic bass notes
-node tests/importers.test.mjs # ASCII tab parser and .mxl unzip (sample files in tests/fixtures/)
+node tests/importers.test.mjs # ASCII tab parser (sections, chords, repeats) and .mxl unzip (sample files in tests/fixtures/)
 node tests/audio.test.mjs     # plucked-string bass/guitar tuning
 node tests/voicings.test.mjs  # guitar shapes and keyboard voice leading
 node tests/songs.test.mjs     # song library: bars add up, parts in range
@@ -182,7 +184,7 @@ js/grooves.js         groove library
 js/theory.js          pattern parsers, chord theory, melody & bass line generators
 js/tuner.js           microphone pitch detection for the tuner
 js/practice.js        "My music" library, piece view, PDF viewer
-js/importers.js       ASCII tab + MusicXML/.mxl parsers
+js/importers.js       ASCII tab + MusicXML/.mxl + Guitar Pro 7/8 parsers
 js/library.js         IndexedDB storage for imported files
 js/omr.js             GitHub upload/polling for sheet-music conversion
 js/songs.js           built-in public-domain song library (chords, melody, generated bass)

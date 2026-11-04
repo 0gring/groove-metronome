@@ -302,3 +302,8 @@ body.piece-mode .groove-only { display: none !important; }
   font: inherit; color: var(--text); background: var(--card-2); border: 1px solid var(--line);
   border-radius: 12px; min-height: 44px; padding: 0 10px; width: 100%;
 }
+
+/* song sections from pasted tabs: tap to loop */
+.section-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.section-row .chip { min-height: 36px; font-size: 0.9rem; padding: 0 12px; background: transparent; }
+.section-row .chip[aria-pressed="true"] { background: var(--accent); color: #111; border-color: var(--accent); }

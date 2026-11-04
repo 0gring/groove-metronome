@@ -100,7 +100,8 @@
         <input type="file" id="importFile" class="sr-only">
         <button id="pasteBtn" class="secondary" aria-expanded="false" aria-controls="pasteBox">📋 Paste tab</button>
       </div>
-      <p class="hint">Text tabs (.txt), MusicXML (.musicxml / .mxl — export it from MuseScore, Guitar Pro, Sibelius…) or PDF.</p>
+      <p class="hint">Text tabs (.txt), Guitar Pro 7/8 (.gp), MusicXML (.musicxml / .mxl — export it from MuseScore, Sibelius…) or PDF.
+        Older .gp5 / .gpx files: open them in MuseScore (free) and export MusicXML.</p>
       <div class="field-row song-row">
         <label>📚 Song library (public-domain songs)
           <select id="songSelect"><option value="">Choose a song to practise…</option></select>
@@ -109,7 +110,8 @@
       <details class="find-tabs">
         <summary>🔎 Find tabs online</summary>
         <p class="hint">Search a tab site for any song, copy a text tab, then come back and tap <b>📋 Paste tab</b>.
-          Tabs you paste stay on this device.</p>
+          Section labels like <b>[Verse]</b> or <b>Chorus:</b> become buttons to loop that part, chord names written above
+          the tab are played by the chords layer, and repeat marks (<b>x4</b>) are played out. Tabs you paste stay on this device.</p>
         <div class="field-row">
           <label>Song and artist
             <input type="text" id="tabQuery" autocomplete="off" placeholder="e.g. My Girl Temptations bass">
@@ -188,6 +190,7 @@
             </label>
           </div>
           <label class="check" id="songMuteWrap"><input type="checkbox" id="songMute"> Mute my part (I play it)</label>
+          <div id="sectionRow" class="section-row" hidden aria-label="Loop a section"></div>
           <div class="btn-row">
             <button id="loopAll" class="secondary">Loop whole piece</button>
             <button id="fileTempo" class="secondary" hidden></button>

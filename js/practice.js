@@ -1,6 +1,6 @@
 // "My music": import tabs / MusicXML / PDF, keep them in a library, and practise them.
 
-import { parseAsciiTab, parseMusicXML, readMxl, findTabBlocks, BASS4, BASS5 } from './importers.js';
+import { parseAsciiTab, parseMusicXML, readMxl, findTabBlocks, BASS4, BASS5, parseGpif, readGp, isGpZip, oldGuitarProMessage } from './importers.js';
 import { SONGS, buildSong } from './songs.js';
 import { listItems, getItem, putItem, deleteItem, newId } from './library.js';
 import * as omr from './omr.js';
@@ -9,7 +9,7 @@ const $ = (id) => document.getElementById(id);
 const NAMES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
 const COUNTS = { 2: ['', '&'], 4: ['', 'e', '&', 'a'] };
 const ACTIVE_KEY = 'groove-metronome:piece';
-const TYPE_LABEL = { tab: 'TAB', xml: 'XML', mxl: 'MXL', pdf: 'PDF' };
+const TYPE_LABEL = { tab: 'TAB', xml: 'XML', mxl: 'MXL', gp: 'GP', pdf: 'PDF' };
 
 const pdfMod = () => import('./pdfview.js');
 
@@ -41,6 +41,10 @@ export function initPractice(api) {
     }
     const opts = { beats: st.beats ?? 4, title: item.name, partIndex: st.part ?? null, octave: st.octave };
     if (item.type === 'tab') return { piece: parseAsciiTab(item.data, opts) };
+    if (item.type === 'gp') {
+      item._xml ??= await readGp(item.data);
+      return { piece: parseGpif(item._xml, opts) };
+    }
     if (item.type === 'xml' || item.type === 'mxl') {
       if (item.type === 'mxl') item._xml ??= await readMxl(item.data);
       const piece = parseMusicXML(item.type === 'mxl' ? item._xml : item.data, opts);
@@ -74,17 +78,20 @@ export function initPractice(api) {
   async function importFile(file) {
     msg(`Importing ${file.name}…`);
     try {
-      const head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+      const head = new Uint8Array(await file.slice(0, 32).arrayBuffer());
+      const oldGp = oldGuitarProMessage(head);
+      if (oldGp) throw new Error(oldGp);
       const isPdf = head[0] === 0x25 && head[1] === 0x50 && head[2] === 0x44 && head[3] === 0x46; // %PDF
       const isZip = head[0] === 0x50 && head[1] === 0x4b; // PK
       const binary = isPdf || isZip;
       const text = binary ? null : await file.text();
-      const type = isPdf ? 'pdf' : isZip ? 'mxl' : detectType(file.name, text);
+      const data = binary ? await file.arrayBuffer() : text;
+      const type = isPdf ? 'pdf' : isZip ? ((await isGpZip(data)) ? 'gp' : 'mxl') : detectType(file.name, text);
       const item = {
         id: newId(),
         name: file.name.replace(/\.[^.]+$/, '') || 'Untitled',
         type,
-        data: binary ? await file.arrayBuffer() : text,
+        data,
         settings: {},
         added: Date.now(),
       };
@@ -267,6 +274,7 @@ export function initPractice(api) {
       $('piecePart').value = String(piece.partIndex);
     }
     const [from, to] = item.settings.loop ?? [1, piece.bars];
+    renderSections(from, to);
     for (const id of ['loopFrom', 'loopTo']) $(id).max = piece.bars;
     $('loopFrom').value = from;
     $('loopTo').value = to;
@@ -287,6 +295,24 @@ export function initPractice(api) {
     }
   }
 
+  /** Buttons for the song's sections ([Verse], [Chorus], ...) — tap one to loop it. */
+  function renderSections(from, to) {
+    const row = $('sectionRow');
+    const secs = active.piece.sections ?? [];
+    row.hidden = secs.length < 2;
+    const seen = {};
+    row.replaceChildren(...secs.map((sec) => {
+      seen[sec.name] = (seen[sec.name] ?? 0) + 1;
+      const b = document.createElement('button');
+      b.className = 'chip';
+      b.textContent = seen[sec.name] > 1 ? `${sec.name} (${seen[sec.name]})` : sec.name;
+      b.title = `Bars ${sec.from + 1}–${sec.to + 1}`;
+      b.setAttribute('aria-pressed', String(from === sec.from + 1 && to === sec.to + 1));
+      b.onclick = () => setLoop(sec.from + 1, sec.to + 1);
+      return b;
+    }));
+  }
+
   function setLoop(from, to) {
     const { piece, item } = active;
     from = Math.max(1, Math.min(piece.bars, from | 0 || 1));
@@ -294,6 +320,7 @@ export function initPractice(api) {
     $('loopFrom').value = from;
     $('loopTo').value = to;
     item.settings.loop = [from, to];
+    renderSections(from, to);
     save(item);
     api.setLoop(from - 1, to - 1);
     shownBar = -1;

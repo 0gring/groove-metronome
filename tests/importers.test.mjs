@@ -1,6 +1,6 @@
 // Run: node tests/importers.test.mjs   (MusicXML parsing is tested in the browser smoke test: needs DOMParser)
 import assert from 'node:assert/strict';
-import { parseAsciiTab, findTabBlocks, unzip } from '../js/importers.js';
+import { parseAsciiTab, findTabBlocks, unzip, tabChord } from '../js/importers.js';
 
 // Typical bass tab with bar lines, two systems, some text around it
 const tab = `
@@ -66,4 +66,43 @@ const zipBuf = new Uint8Array([...local, ...cen, ...end]).buffer;
 const z = await unzip(zipBuf);
 assert.equal(await z.read('a.txt'), 'hello');
 
-console.log('ok – ASCII tab parser and unzip');
+
+// Ultimate-Guitar style: section labels, chord names above the tab, repeat marks
+{
+  const ug = `[Intro]
+  Am               F
+G|----------------|----------------|
+D|----------------|----------------|
+A|-0---0-0--------|----------------|
+E|---------3-3----|-1---1-1-1------|  x2
+
+[Verse 1]
+  C                G
+G|----------------|----------------|
+D|----------------|----------------|
+A|-3-3-3-3--------|----------------|
+E|----------------|-3-3-3-3--------|
+
+Here are some lyrics, the Verse goes on
+Chorus (x2)
+G|--------|
+D|--------|
+A|-0-0-0-0|
+E|--------|
+`;
+  const u = parseAsciiTab(ug);
+  assert.deepEqual(u.sections.map((s) => [s.name, s.from, s.to]), [['Intro', 0, 3], ['Verse 1', 4, 5], ['Chorus', 6, 7]]);
+  assert.equal(u.bars, 8);
+  const names = u.chordsByBar.map((r) => r.map((c) => c.name).join(' '));
+  assert.deepEqual(names, ['Am', 'F', 'Am', 'F', 'C', 'G', 'G', 'G']);
+  assert.ok(u.chordsByBar[6][0].held, 'chord carries over into bars without a new name');
+  assert.equal(u.notes.filter((n) => n.bar === 2).length, u.notes.filter((n) => n.bar === 0).length, 'x2 repeats the block');
+  assert.equal(u.notes.filter((n) => n.bar === 7).length, 4, 'section repeat');
+  assert.ok(u.chordsByBar.every((r) => r.every((c) => c.dur > 0)));
+  assert.equal(findTabBlocks(ug).length, 3);
+}
+for (const [s, pc, q] of [['F#m7', 6, 'm7'], ['Bbmaj7', 10, 'maj7'], ['Gsus4', 7, 'sus'], ['E5', 4, '5'], ['C/G', 0, ''], ['Bm7b5', 11, 'm7b5'], ['Dadd9', 2, '']]) {
+  assert.deepEqual([tabChord(s).pc, tabChord(s).q], [pc, q], s);
+}
+for (const s of ['day', 'Hello', 'Am-I']) assert.equal(tabChord(s), null, s);
+console.log('ok – ASCII tab parser (sections, chords, repeats) and unzip');

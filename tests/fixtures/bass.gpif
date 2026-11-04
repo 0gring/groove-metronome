@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GPIF>
+<Score><Title><![CDATA[Test Riff]]></Title></Score>
+<MasterTrack><Tracks>0 1</Tracks><Automations><Automation><Type>Tempo</Type><Bar>0</Bar><Position>0</Position><Value>96 2</Value></Automation></Automations></MasterTrack>
+<Tracks>
+<Track id="0"><Name><![CDATA[Guitar]]></Name><InstrumentSet><Name>Electric Guitar</Name><Type>electricGuitar</Type></InstrumentSet>
+<Staves><Staff><Properties><Property name="Tuning"><Pitches>40 45 50 55 59 64</Pitches></Property></Properties></Staff></Staves></Track>
+<Track id="1"><Name><![CDATA[Bass]]></Name><InstrumentSet><Name>Electric Bass</Name><Type>electricBass</Type></InstrumentSet>
+<Staves><Staff><Properties><Property name="CapoFret"><Fret>0</Fret></Property><Property name="Tuning"><Pitches>28 33 38 43</Pitches></Property>
+<Property name="DiagramCollection"><Items><Item id="0" name="Am"/><Item id="1" name="G"/></Items></Property></Properties></Staff></Staves></Track>
+</Tracks>
+<MasterBars>
+<MasterBar><Time>4/4</Time><Bars>0 2</Bars><Section><Letter><![CDATA[A]]></Letter><Text><![CDATA[Verse]]></Text></Section><Repeat start="true" end="false" count="0"/></MasterBar>
+<MasterBar><Time>4/4</Time><Bars>1 3</Bars><Repeat start="false" end="true" count="2"/></MasterBar>
+<MasterBar><Time>4/4</Time><Bars>1 4</Bars><Section><Letter><![CDATA[B]]></Letter><Text><![CDATA[Chorus]]></Text></Section></MasterBar>
+</MasterBars>
+<Bars>
+<Bar id="0"><Voices>0 -1 -1 -1</Voices></Bar>
+<Bar id="1"><Voices>0 -1 -1 -1</Voices></Bar>
+<Bar id="2"><Voices>1 -1 -1 -1</Voices></Bar>
+<Bar id="3"><Voices>2 -1 -1 -1</Voices></Bar>
+<Bar id="4"><Voices>3 -1 -1 -1</Voices></Bar>
+</Bars>
+<Voices>
+<Voice id="0"><Beats>0</Beats></Voice>
+<Voice id="1"><Beats>1 2 3 4</Beats></Voice>
+<Voice id="2"><Beats>5 6 6 6 7</Beats></Voice>
+<Voice id="3"><Beats>8 9</Beats></Voice>
+</Voices>
+<Beats>
+<Beat id="0"><Rhythm ref="0"/><Notes>0</Notes></Beat>
+<Beat id="1"><Rhythm ref="1"/><Chord>0</Chord><Notes>1</Notes></Beat>
+<Beat id="2"><Rhythm ref="2"/><Notes>2</Notes></Beat>
+<Beat id="3"><Rhythm ref="2"/></Beat>
+<Beat id="4"><Rhythm ref="3"/><Notes>3</Notes></Beat>
+<Beat id="5"><Rhythm ref="1"/><Chord>1</Chord><Notes>4</Notes></Beat>
+<Beat id="6"><Rhythm ref="4"/><Notes>5</Notes></Beat>
+<Beat id="7"><Rhythm ref="1"/><Notes>6</Notes></Beat>
+<Beat id="8"><Rhythm ref="5"/><Chord>0</Chord><Notes>7</Notes></Beat>
+<Beat id="9"><Rhythm ref="5"/><Notes>8</Notes></Beat>
+</Beats>
+<Notes>
+<Note id="0"><Properties><Property name="String"><String>0</String></Property><Property name="Fret"><Fret>0</Fret></Property></Properties></Note>
+<Note id="1"><Properties><Property name="String"><String>1</String></Property><Property name="Fret"><Fret>0</Fret></Property></Properties></Note>
+<Note id="2"><Properties><Property name="String"><String>1</String></Property><Property name="Fret"><Fret>3</Fret></Property></Properties></Note>
+<Note id="3"><Properties><Property name="Muted"><Enable/></Property><Property name="String"><String>1</String></Property><Property name="Fret"><Fret>0</Fret></Property></Properties></Note>
+<Note id="4"><Properties><Property name="String"><String>0</String></Property><Property name="Fret"><Fret>3</Fret></Property></Properties></Note>
+<Note id="5"><Properties><Property name="String"><String>2</String></Property><Property name="Fret"><Fret>0</Fret></Property></Properties></Note>
+<Note id="6"><Properties><Property name="String"><String>0</String></Property><Property name="Fret"><Fret>5</Fret></Property></Properties></Note>
+<Note id="7"><Tie origin="true" destination="false"/><Properties><Property name="String"><String>1</String></Property><Property name="Fret"><Fret>0</Fret></Property></Properties></Note>
+<Note id="8"><Tie origin="false" destination="true"/><Properties><Property name="String"><String>1</String></Property><Property name="Fret"><Fret>0</Fret></Property></Properties></Note>
+</Notes>
+<Rhythms>
+<Rhythm id="0"><NoteValue>Whole</NoteValue></Rhythm>
+<Rhythm id="1"><NoteValue>Quarter</NoteValue></Rhythm>
+<Rhythm id="2"><NoteValue>Eighth</NoteValue></Rhythm>
+<Rhythm id="3"><NoteValue>Quarter</NoteValue><AugmentationDot count="1"/></Rhythm>
+<Rhythm id="4"><NoteValue>Eighth</NoteValue><PrimaryTuplet num="3" den="2"/></Rhythm>
+<Rhythm id="5"><NoteValue>Half</NoteValue></Rhythm>
+</Rhythms>
+</GPIF>
