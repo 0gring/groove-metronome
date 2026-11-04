@@ -15,7 +15,7 @@ export const SOUNDS = {
     electric: { label: 'Finger bass', inst: 'fbass', ks: { bright: 0.42, pick: 0.16, decay: 0.997, lp: 1500, sub: 0.35, gain: 1.7, r: 0.07 }, waves: [{ type: 'sawtooth' }, { type: 'sine', gain: 0.8 }], cutoff: 260, cutEnv: 1300, q: 4, a: 0.004, d: 0.2, s: 0.55, r: 0.05, gain: 0.85 },
     synth: { label: 'Synth', waves: [{ type: 'square' }, { type: 'sawtooth', detune: 10 }], cutoff: 300, cutEnv: 2400, q: 9, a: 0.003, d: 0.14, s: 0.45, r: 0.04, gain: 0.6 },
     upright: { label: 'Upright', inst: 'upright', ks: { bright: 0.22, pick: 0.28, decay: 0.991, lp: 800, sub: 0.45, thump: 0.5, gain: 1.5, r: 0.12 }, waves: [{ type: 'triangle' }, { type: 'sine', gain: 0.7 }], cutoff: 700, cutEnv: 600, q: 1, a: 0.008, d: 0.35, s: 0.15, r: 0.1, gain: 1.1 },
-    '808': { label: '808', waves: [{ type: 'sine' }], cutoff: 3000, q: 0.5, a: 0.002, d: 0.8, s: 0.75, r: 0.2, glide: 1.6, drive: true, gain: 0.9 },
+    '808': { label: '808', waves: [{ type: 'sine' }], cutoff: 3000, q: 0.5, a: 0.002, d: 0.8, s: 0.75, r: 0.2, glide: 1.6, drive: true, gain: 0.5 },
   },
   chords: {
     epiano: { label: 'E-piano', sampled: 'ep', r: 0.3, waves: [{ type: 'sine' }, { type: 'sine', mult: 2, gain: 0.4, decay: 0.3 }, { type: 'sine', mult: 7, gain: 0.08, decay: 0.05 }], cutoff: 6000, a: 0.003, d: 0.9, s: 0.25, r: 0.25, gain: 0.45 },
@@ -62,7 +62,7 @@ const DRUM_SAMPLES = {
 const INST = {
   fbass: { level: 3.0, r: 0.07, stacBelow: 0.2, tone: [700, 4500] },
   upright: { level: 1.65, r: 0.12, tone: [600, 3500] },
-  guitar: { level: 1.6, r: 0.08, stacBelow: 0.22, tone: [1500, 8000] },
+  guitar: { level: 1.6, r: 0.08, stacBelow: 0.22 },
   trumpet: { level: 0.75, r: 0.12, stacBelow: 0.18, pan: 0.15 },
   flute: { level: 0.8, r: 0.12, stacBelow: 0.16, pan: -0.15 },
   sax: { level: 0.8, r: 0.12, stacBelow: 0.18, pan: 0.1 },
@@ -117,18 +117,19 @@ export class AudioEngine {
   init(ctxOverride = null) {
     if (this.ctx) return this.ctx;
     const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
-    const ctx = (this.ctx = ctxOverride ?? new AC({ latencyHint: 'interactive' }));
+    // 'playback' asks for a larger audio buffer: no dropouts on phones (we schedule notes ahead anyway)
+    const ctx = (this.ctx = ctxOverride ?? new AC({ latencyHint: 'playback' }));
     this.samples = {}; // name -> AudioBuffer
     this.keys = { ep: [], piano: [] }; // [{ midi, buffer }]
     this.ksCache = new Map();
 
     this.master = ctx.createGain();
-    this.master.gain.value = 0.5;
+    this.master.gain.value = 0.36; // headroom: the limiter should only catch rare peaks, never distort
     const comp = ctx.createDynamicsCompressor();
-    comp.threshold.value = -14;
+    comp.threshold.value = -18;
     comp.knee.value = 10;
-    comp.ratio.value = 3;
-    comp.attack.value = 0.004;
+    comp.ratio.value = 4;
+    comp.attack.value = 0.002;
     comp.release.value = 0.18;
     // soft limiter so peaks round off instead of clipping
     const limit = ctx.createWaveShaper();
@@ -138,17 +139,21 @@ export class AudioEngine {
       curve[i] = Math.tanh(1.1 * x) / Math.tanh(1.1);
     }
     limit.curve = curve;
-    limit.oversample = '2x';
+    limit.oversample = 'none';
     this.master.connect(comp).connect(limit).connect(ctx.destination);
 
     // room reverb (generated impulse response)
     const verb = ctx.createConvolver();
-    verb.buffer = this.impulse(1.7, 3.0);
+    verb.buffer = this.impulse(1.0, 2.6); // short room: much cheaper to convolve
     const verbIn = ctx.createBiquadFilter();
     verbIn.type = 'lowpass';
     verbIn.frequency.value = 5500;
     const verbHp = this.filter('highpass', 180);
     verbIn.connect(verbHp).connect(verb).connect(this.master);
+
+    this.pans = {};
+    this.monoVoice = {};
+    this.chordVoices = [];
 
     this.buses = {};
     for (const name of ['click', 'drums', 'bass', 'chords', 'melody']) {
@@ -159,6 +164,7 @@ export class AudioEngine {
       g.connect(send).connect(verbIn);
       this.buses[name] = g;
     }
+    this.setupOrgan();
 
     const len = Math.floor(ctx.sampleRate * 2);
     this.noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
@@ -172,6 +178,66 @@ export class AudioEngine {
       this.driveCurve[i] = Math.tanh(2.5 * x);
     }
     return ctx;
+  }
+
+  /** Organ: drawbar harmonics in one waveform, and a single shared rotating-speaker (Leslie) effect. */
+  setupOrgan() {
+    const ctx = this.ctx;
+    const real = new Float32Array(9);
+    const imag = new Float32Array(9);
+    // harmonics of the 16' pitch: 1 = 16', 2 = 8', 3 = 5 1/3', 4 = 4', 6 = 2 2/3', 8 = 2'
+    [[1, 0.55], [2, 1], [3, 0.45], [4, 0.5], [6, 0.25], [8, 0.2]].forEach(([h, a]) => (imag[h] = a));
+    this.organWave = ctx.createPeriodicWave(real, imag);
+    this.organIn = ctx.createGain();
+    const vib = ctx.createDelay(0.02);
+    vib.delayTime.value = 0.004;
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 6.3;
+    const vibDepth = ctx.createGain();
+    vibDepth.gain.value = 0.00015; // about ±10 cents of pitch wobble
+    const trem = ctx.createGain();
+    trem.gain.value = 0.85;
+    const tremDepth = ctx.createGain();
+    tremDepth.gain.value = 0.15;
+    lfo.connect(vibDepth).connect(vib.delayTime);
+    lfo.connect(tremDepth).connect(trem.gain);
+    this.organIn.connect(vib).connect(trem).connect(this.buses.chords);
+    lfo.start();
+  }
+
+  /** One shared stereo panner per bus and position (instead of a new panner for every note). */
+  panTo(busName, pan) {
+    const v = Math.round(pan * 20) / 20;
+    if (!v) return this.buses[busName];
+    const key = `${busName}:${v}`;
+    if (!this.pans[key]) {
+      const p = this.ctx.createStereoPanner();
+      p.pan.value = v;
+      p.connect(this.buses[busName]);
+      this.pans[key] = p;
+    }
+    return this.pans[key];
+  }
+
+  /** Release earlier notes at time t (a new bass/horn note, or a new chord), and stop their sources. */
+  release(voices, t) {
+    const keep = [];
+    for (const v of voices) {
+      if (!v) continue;
+      if (v.t >= t - 0.001) {
+        keep.push(v);
+        continue;
+      }
+      for (const a of v.amps) a.gain.setTargetAtTime(0, t, 0.015);
+      for (const src of v.srcs) {
+        try {
+          src.stop(t + 0.12);
+        } catch {
+          /* already stopped */
+        }
+      }
+    }
+    return keep;
   }
 
   impulse(seconds, power) {
@@ -277,17 +343,10 @@ export class AudioEngine {
       const [lo, hi] = cfg.tone ?? [500, 500];
       node = node.connect(this.filter('lowpass', dead ? 600 : lo + (hi - lo) * vel, 0.6));
     }
-    node = node.connect(amp);
-    const p = pan || cfg.pan || 0;
-    if (p) {
-      const pn = ctx.createStereoPanner();
-      pn.pan.value = p;
-      node = node.connect(pn);
-    }
-    node.connect(this.buses[busName]);
+    node.connect(amp).connect(this.panTo(busName, pan || cfg.pan || 0));
     src.start(t);
     src.stop(t + hold + cfg.r * 3 + 0.05);
-    return true;
+    return { t, amps: [amp], srcs: [src] };
   }
 
   async resume() {
@@ -383,9 +442,7 @@ export class AudioEngine {
     src.playbackRate.value = 1 + (Math.random() - 0.5) * 0.02; // tiny pitch variation, like real hits
     const g = ctx.createGain();
     g.gain.value = map.level * vel ** 1.3;
-    const pan = ctx.createStereoPanner();
-    pan.pan.value = map.pan;
-    src.connect(g).connect(pan).connect(this.buses.drums);
+    src.connect(g).connect(this.panTo('drums', map.pan));
     src.start(t);
     if (name === 'hho') this.openHats.push({ t, g });
   }
@@ -564,9 +621,11 @@ export class AudioEngine {
       this.osc('sine', p.vibrato.rate, t, end).connect(vib);
     }
 
+    const srcs = [];
     for (const w of p.waves) {
       const f = f0 * (w.mult ?? 1);
       const o = this.osc(w.type, f, t, end);
+      srcs.push(o);
       if (p.glide) {
         o.frequency.setValueAtTime(f * p.glide, t);
         o.frequency.exponentialRampToValueAtTime(f, t + 0.07);
@@ -603,6 +662,7 @@ export class AudioEngine {
       n.connect(this.filter('bandpass', 2500, 0.8)).connect(g).connect(this.buses[busName]);
     }
     node.connect(amp).connect(this.buses[busName]);
+    return { t, amps: [amp], srcs };
   }
 
   /** Cached Karplus-Strong string for an instrument at a MIDI note. */
@@ -634,17 +694,11 @@ export class AudioEngine {
     const hold = dead ? 0.03 : Math.max(dur, 0.04);
     amp.gain.setValueAtTime(peak, t);
     amp.gain.setTargetAtTime(0, t + hold, dead ? 0.01 : rel / 3);
-    node.connect(amp);
-    let out = amp;
-    if (pan) {
-      const pn = ctx.createStereoPanner();
-      pn.pan.value = pan;
-      out = amp.connect(pn);
-    }
-    out.connect(this.buses[busName]);
+    node.connect(amp).connect(this.panTo(busName, pan));
     const end = t + hold + 0.5;
     src.start(t);
     src.stop(end);
+    const handle = { t, amps: [amp], srcs: [src] };
     // body: a little sine fundamental for weight, and a finger/thump transient
     if (ks.sub && !dead) {
       const o = this.osc('sine', 440 * 2 ** ((midi - 69) / 12), t, end);
@@ -654,12 +708,15 @@ export class AudioEngine {
       g.gain.setTargetAtTime(peak * ks.sub * 0.6, t + 0.01, 0.15);
       g.gain.setTargetAtTime(0, t + hold, rel / 3);
       o.connect(g).connect(this.buses[busName]);
+      handle.amps.push(g);
+      handle.srcs.push(o);
     }
     if (ks.thump) {
       const n = this.noise(t, 0.04);
       const g = this.envGain(t, peak * ks.thump * 0.3, 0.001, 0.03);
       n.connect(this.filter('lowpass', 400)).connect(g).connect(this.buses[busName]);
     }
+    return handle;
   }
 
   /** Sampled key instrument (e-piano / piano), pitch-shifted from the nearest recorded note. */
@@ -672,29 +729,47 @@ export class AudioEngine {
     const src = ctx.createBufferSource();
     src.buffer = best.buffer;
     src.playbackRate.value = 2 ** ((midi - best.midi) / 12);
-    const tone = this.filter('lowpass', 1800 + 7000 * vel, 0.5);
     const amp = ctx.createGain();
     const peak = vel * (kind === 'piano' ? 1.5 : 1.25);
     amp.gain.setValueAtTime(peak, t);
     amp.gain.setTargetAtTime(0, t + Math.max(dur, 0.05), (p.r ?? 0.3) / 3);
-    let out = src.connect(tone).connect(amp);
-    if (pan) {
-      const pn = ctx.createStereoPanner();
-      pn.pan.value = pan;
-      out = out.connect(pn);
-    }
-    out.connect(this.buses[busName]);
+    src.connect(amp).connect(this.panTo(busName, pan));
     src.start(t);
     src.stop(t + Math.max(dur, 0.05) + (p.r ?? 0.3) * 2.5);
-    return true;
+    return { t, amps: [amp], srcs: [src] };
   }
 
+  /** A bass plays one note at a time: each new note stops the one before. */
   bass(t, midi, dur, vel, sound, dead = false) {
     const p = SOUNDS.bass[sound] ?? SOUNDS.bass.electric;
-    if (p.inst && this.playInst('bass', p.inst, t, midi, dur, vel, { dead })) return;
-    if (p.ks) return this.ksVoice('bass', sound, p, t, midi, dur, vel, { dead });
-    if (dead) this.voice('bass', { ...p, cutoff: 350, cutEnv: 300, s: 0, d: 0.03, r: 0.02, glide: 0 }, t, midi, 0.03, vel * 0.7);
-    else this.voice('bass', p, t, midi, dur, vel);
+    this.release([this.monoVoice.bass], t);
+    this.monoVoice.bass =
+      (p.inst && this.playInst('bass', p.inst, t, midi, dur, vel, { dead })) ||
+      (p.ks ? this.ksVoice('bass', sound, p, t, midi, dur, vel, { dead })
+        : dead ? this.voice('bass', { ...p, cutoff: 350, cutEnv: 300, s: 0, d: 0.03, r: 0.02, glide: 0 }, t, midi, 0.03, vel * 0.7)
+          : this.voice('bass', p, t, midi, dur, vel));
+  }
+
+  organNote(t, midi, dur, vel, click) {
+    const ctx = this.ctx;
+    const o = ctx.createOscillator();
+    o.setPeriodicWave(this.organWave);
+    o.frequency.value = 440 * 2 ** ((midi - 69) / 12) / 2; // 16' fundamental
+    const amp = ctx.createGain();
+    const peak = vel * 0.55;
+    const hold = Math.max(dur, 0.03);
+    amp.gain.setValueAtTime(0, t);
+    amp.gain.linearRampToValueAtTime(peak, t + 0.005);
+    amp.gain.setTargetAtTime(0, t + hold, 0.02);
+    o.connect(amp).connect(this.organIn);
+    o.start(t);
+    o.stop(t + hold + 0.2);
+    if (click) {
+      const n = this.noise(t, 0.012);
+      const g = this.envGain(t, peak * 0.3, 0.0005, 0.006);
+      n.connect(this.filter('bandpass', 2500, 0.8)).connect(g).connect(this.buses.chords);
+    }
+    return { t, amps: [amp], srcs: [o] };
   }
 
   /**
@@ -707,19 +782,26 @@ export class AudioEngine {
     const order = strummed && dir === 'up' ? [...midis].reverse() : midis;
     const step = strummed ? (dir === 'up' ? 0.007 : 0.011) : 0;
     const per = (vel / Math.sqrt(midis.length)) * (strummed && dir === 'up' ? 0.85 : 1);
+    // a new chord releases the previous one (hands lift / the strum mutes the strings)
+    this.chordVoices = this.release(this.chordVoices, t);
     order.forEach((m, i) => {
       const at = t + i * step + (strummed ? 0 : Math.random() * 0.006);
       const pan = (midis.indexOf(m) / Math.max(1, midis.length - 1) - 0.5) * 0.5; // spread the chord across the stereo field
-      if (p.sampled && this.sampledKey('chords', p.sampled, p, at, m, dur, per, pan)) return;
-      if (p.inst && this.playInst('chords', p.inst, at, m, dur, per, { pan })) return;
-      if (p.ks) return this.ksVoice('chords', 'guitar', p, at, m, dur, per, { pan });
-      this.voice('chords', p, at, m, dur, per);
+      const v =
+        (sound === 'organ' && this.organNote(at, m, dur, per, i === 0)) ||
+        (p.sampled && this.sampledKey('chords', p.sampled, p, at, m, dur, per, pan)) ||
+        (p.inst && this.playInst('chords', p.inst, at, m, dur, per, { pan })) ||
+        (p.ks ? this.ksVoice('chords', 'guitar', p, at, m, dur, per, { pan }) : this.voice('chords', p, at, m, dur, per));
+      this.chordVoices.push(v);
     });
   }
 
+  /** Horns, flute and leads play one note at a time; vibes and bells may ring on. */
   melody(t, midi, dur, vel, sound) {
     const p = SOUNDS.melody[sound] ?? SOUNDS.melody.square;
-    if (p.inst && this.playInst('melody', p.inst, t, midi, dur, vel)) return;
-    this.voice('melody', p, t, midi, dur, vel);
+    const mono = !['vibes', 'bell', 'pluck'].includes(sound);
+    if (mono) this.release([this.monoVoice.melody], t);
+    const v = (p.inst && this.playInst('melody', p.inst, t, midi, dur, vel)) || this.voice('melody', p, t, midi, dur, vel);
+    if (mono) this.monoVoice.melody = v;
   }
 }
