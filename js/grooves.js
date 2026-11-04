@@ -47,6 +47,8 @@ export const GROOVES = [
     vars: [
       { name: 'Push', drums: { kick: 'X.x.....X.x..x..', hhc: 'X.x.X.x.X.x.X...', hho: '..............x.' } },
       { name: 'Ride', drums: { hhc: '....o.......o...', ride: 'X.x.X.x.X.x.X.x.' } },
+      { name: 'Four on snare', drums: { snare: '....X...X...X..X', kick: 'X.......X.......' } },
+      { name: 'Tom groove', drums: { hhc: null, tomL: 'X.x.X.x.X.x.X.x.', kick: 'X.....x.X.....x.' } },
     ],
   },
   {
@@ -65,6 +67,8 @@ export const GROOVES = [
     vars: [
       { name: 'Shaker', drums: { kick: 'X..x..x.X.......', shaker: 'xoxoxoxoxoxoxoxo' } },
       { name: 'Half-time', drums: { kick: 'X.........x.....', snare: '........X.......', clap: '........X.......' } },
+      { name: 'Four on the floor', drums: { kick: 'X...X...X...X...', hho: '..x...x...x...x.', hhc: 'x...x...x...x...' } },
+      { name: 'Tambourine', drums: { tamb: '....X.......X...', hhc: 'x.xxx.xxx.xxx.xx' } },
     ],
   },
   {
@@ -82,6 +86,8 @@ export const GROOVES = [
     vars: [
       { name: 'Gallop', drums: { kick: 'X.xxX.xxX.xxX.xx' } },
       { name: 'Blast', drums: { kick: 'x.x.x.x.x.x.x.x.', snare: '.X.X.X.X.X.X.X.X', ride: 'X.x.X.x.X.x.X.x.' } },
+      { name: 'Half-time', drums: { snare: '........X.......', kick: 'xxxxxxxxxxxxxxxx', ride: null, crash: 'X.......X.......' } },
+      { name: 'Thrash', drums: { kick: 'X.X.X.X.X.X.X.X.', snare: '..X...X...X...X.', ride: 'X.X.X.X.X.X.X.X.' } },
     ],
   },
 
@@ -102,6 +108,8 @@ export const GROOVES = [
     vars: [
       { name: '16th hats', drums: { kick: 'X..x..x...X.....', snare: '....X..g.g.gX..g', hhc: 'XxxxXxxxXxxxXxxx', hho: null } },
       { name: 'Open hats', drums: { kick: 'X.x...x...X..x.x', snare: '....X..g.g..X...', hhc: 'X.x.X.x.X.x.X.x.', hho: '...x.......x....' } },
+      { name: 'Linear', drums: { hhc: 'x.x..x.x.x.x..x.', snare: '....X..g.g..X...', kick: 'X..x..x...X..x..', hho: null } },
+      { name: 'Ride & ghosts', drums: { hhc: '..x...x...x...x.', ride: 'X.x.X.x.X.x.X.x.', snare: 'g...XgggXg..Xg.g', hho: null } },
     ],
   },
   {
@@ -120,6 +128,8 @@ export const GROOVES = [
     vars: [
       { name: 'Busy hats', drums: { hhc: 'xx..xx..xx..xx..', clap: '....X.......X...' } },
       { name: 'Syncopated snare', drums: { snare: '....X..x....X...', hho: null, hhc: 'x.x.x.x.x.x.x.x.' } },
+      { name: 'Tom fills', drums: { tomH: '..............xx', tomL: '.............x..' } },
+      { name: 'Clap & shaker', drums: { clap: '....X.......X...', shaker: 'xoxoxoxoxoxoxoxo' } },
     ],
   },
   {
@@ -137,6 +147,8 @@ export const GROOVES = [
     vars: [
       { name: 'Rim & push', drums: { kick: 'X.....x...x..x..', snare: null, rim: '....x.......x...' } },
       { name: 'Late kick', drums: { kick: 'X......x.xX.....', snare: '....X......g.gX.', hhc: 'x.x.x.x.x.x.x.x.' } },
+      { name: 'Drunk kick', drums: { kick: 'X.....x..x.x....', hhc: 'x.x.x.x.x.x.x.x.' } },
+      { name: 'Brushes', drums: { hhc: null, snare: 'g.g.X.g.g.g.X.g.' } },
     ],
   },
 
@@ -157,6 +169,8 @@ export const GROOVES = [
     vars: [
       { name: 'Pickup kick', drums: { kick: 'X..x....X..x..x.' } },
       { name: 'Tambourine 8ths', drums: { tamb: 'x.x.X.x.x.x.X.x.', hhc: null } },
+      { name: 'Four-on-the-floor', drums: { kick: 'X...X...X...X...' } },
+      { name: 'Shuffle feel', drums: { hhc: 'x..xx..xx..xx..x', tamb: 'x..xX..xx..xX..x' } },
     ],
   },
   {
@@ -174,6 +188,8 @@ export const GROOVES = [
     vars: [
       { name: 'Hi-hat', drums: { hhc: 'x.x.x.x.x.x.x.x.', tamb: '....X.......X...' } },
       { name: 'Snare drive', drums: { snare: 'o...X...o...X...', tamb: 'xxxxXxxxxxxxXxxx' } },
+      { name: 'Floor tom', drums: { tomL: 'x.x.x.x.x.x.x.x.', tamb: '....X.......X...' } },
+      { name: 'Clap backbeat', drums: { clap: '....X.......X...', snare: '....x.......x...' } },
     ],
   },
   {
@@ -192,6 +208,8 @@ export const GROOVES = [
     vars: [
       { name: 'Four snare', drums: { snare: 'o..X..o..X..' } },
       { name: 'Ride', drums: { hhc: null, ride: 'x.xx.xx.xx.x' } },
+      { name: 'Tambourine 8ths', drums: { tamb: 'x.xX.xx.xX.x', hhc: null } },
+      { name: 'Sparse', drums: { hhc: '...x.....x..', kick: 'X...........' } },
     ],
   },
   {
@@ -210,6 +228,8 @@ export const GROOVES = [
     vars: [
       { name: 'Snare', drums: { rim: null, snare: '....X.......X...' } },
       { name: '16th hats', drums: { hhc: 'xoxoxoxoxoxoxoxo', kick: 'X......xX.x.....' } },
+      { name: 'Brushes', drums: { rim: null, snare: 'g.g.X.g.g.g.X.g.', hhc: null } },
+      { name: 'Ride', drums: { hhc: '....x.......x...', ride: 'x.x.x.x.x.x.x.x.' } },
     ],
   },
 
@@ -229,6 +249,8 @@ export const GROOVES = [
     vars: [
       { name: 'Sparse', drums: { kick: 'X.........X.x...', snare: '....X.......X..g', hhc: 'x.x.x.xxx.x.x.x.' } },
       { name: 'Bouncy', drums: { kick: 'X..x......X..x..', hhc: 'x.xxx.x.x.xxx.x.' } },
+      { name: 'Open hat', drums: { hhc: 'x.x.x.x.x.x.x...', hho: '..............x.' } },
+      { name: 'Rimshot', drums: { snare: null, rim: '....X.......X...', kick: 'X..x......X.....' } },
     ],
   },
   {
@@ -246,6 +268,8 @@ export const GROOVES = [
     vars: [
       { name: 'Rolling', drums: { kick: 'X.....x...x...x.', hhc: 'x.x.xrx.x.x.t.x.' } },
       { name: 'Triplet hats', drums: { kick: 'X..x......x..x..', hhc: 'xxxxx.x.xxxxx.r.' } },
+      { name: 'Half-step', drums: { kick: 'X.........x.....', hhc: 'x.x.x.x.x.x.x.x.' } },
+      { name: 'Busy 808', drums: { kick: 'X..x..x...x..x..', hhc: 'xrx.xrx.xtx.xrx.' } },
     ],
   },
   {
@@ -264,6 +288,8 @@ export const GROOVES = [
     vars: [
       { name: 'Bare', drums: { hhc: 'x...x...x...x...', shaker: null } },
       { name: 'Percussion', drums: { snare: '....x.......x..x', conga: '...x..x....x..x.' } },
+      { name: 'Garage', drums: { kick: 'X.....x...X.....', snare: '....X.......X...', clap: null } },
+      { name: 'Ride', drums: { ride: 'x.x.x.x.x.x.x.x.', shaker: null } },
     ],
   },
   {
@@ -280,6 +306,8 @@ export const GROOVES = [
     vars: [
       { name: 'Double kick', drums: { kick: 'X.X.......X.....', snare: '....X.......X...' } },
       { name: 'Ride', drums: { kick: 'X.........X..x..', snare: '....X..g.g..X.g.', hhc: null, ride: 'x.x.x.x.x.x.x.x.' } },
+      { name: 'Amen-ish', drums: { kick: 'X.X.......XX....', snare: '....X..X.X..X..X' } },
+      { name: 'Half-time', drums: { kick: 'X...............', snare: '........X.......' } },
     ],
   },
 
@@ -299,6 +327,8 @@ export const GROOVES = [
     vars: [
       { name: '2-3 clave', drums: { rim: '..x..x..x..x..x.' } },
       { name: 'Ride', drums: { hhc: null, ride: 'x.x.x.x.' } },
+      { name: 'Cross-stick', drums: { rim: 'x..x..x.x..x..x.' } },
+      { name: 'Shaker', drums: { hhc: null, shaker: 'xoxoxoxo' } },
     ],
   },
   {
@@ -316,6 +346,8 @@ export const GROOVES = [
     vars: [
       { name: 'Accents', drums: { shaker: 'xxXxxxXx', rim: 'x.x.x..x.x.x.x..' } },
       { name: 'Surdo', drums: { kick: 'o..x...x', tomL: '....X...' } },
+      { name: 'Partido alto', drums: { rim: 'x.x..x.x..x.x.x.' } },
+      { name: 'Batucada', drums: { snare: 'xxXxxxXx', tomL: 'X...X...' } },
     ],
   },
   {
@@ -333,6 +365,8 @@ export const GROOVES = [
     vars: [
       { name: '3-2 clave', drums: { clave: 'x..x..x...x.x...' } },
       { name: 'Campana', drums: { cowbell: 'XxX.XxX.', kick: '...x...x' } },
+      { name: 'Mambo bell', drums: { cowbell: 'X.xxX.x.' } },
+      { name: 'Timbales', drums: { tomH: '.......x', tomL: '......x.', kick: '...x....' } },
     ],
   },
   {
@@ -350,6 +384,8 @@ export const GROOVES = [
     vars: [
       { name: 'Steppers', drums: { kick: 'X...X...X...X...' } },
       { name: 'Rockers', drums: { kick: 'X.......X.......', rim: null, snare: '........X.......', hhc: 'x.xxx.xxx.xxx.xx' } },
+      { name: 'Hats & rim', drums: { hhc: 'x.xxx.xxx.xxx.xx', rim: '....x.......X...' } },
+      { name: 'Nyabinghi', drums: { kick: 'X.......X.......', tomL: '..x...x...x...x.' } },
     ],
   },
 
@@ -371,6 +407,8 @@ export const GROOVES = [
     vars: [
       { name: 'Straight hats', drums: { kick: 'X.....x...X.....', hhc: 'x.x.x.x.x.x.x.x.' } },
       { name: 'Open hats', drums: { hhc: 'x...x...x...x...', hho: '..x...x...x...x.' } },
+      { name: 'Busy kick', drums: { kick: 'X..x..xxX.x..x..' } },
+      { name: 'Clave', drums: { clave: 'x..x..x...x.x...' } },
     ],
   },
 
@@ -391,6 +429,8 @@ export const GROOVES = [
     vars: [
       { name: 'Two-feel', drums: { kick: 'g.....g.....', snare: '.....g..g...' } },
       { name: 'Brushes', drums: { ride: null, snare: 'o..o.oo..o.o' } },
+      { name: 'Up-tempo', drums: { ride: 'x.xx.xx.xx.x', kick: '............' } },
+      { name: 'Shuffle', drums: { ride: null, hhc: 'x.xx.xx.xx.x', snare: '...X.....X..' } },
     ],
   },
   {
@@ -408,6 +448,8 @@ export const GROOVES = [
     vars: [
       { name: 'Driving', drums: { kick: 'X..x..X..x..' } },
       { name: 'Ride', drums: { hhc: '...x.....x..', ride: 'x.xx.xx.xx.x' } },
+      { name: 'Texas', drums: { snare: 'g.gX.gg.gX.g' } },
+      { name: 'Train', drums: { hhc: null, snare: 'ooxXoxooxXox' } },
     ],
   },
 
@@ -427,6 +469,8 @@ export const GROOVES = [
     vars: [
       { name: 'Fuller', drums: { kick: 'X..X..', hhc: 'xxxxxx' } },
       { name: 'Ride', drums: { hhc: null, ride: 'x.xx.x' } },
+      { name: 'Rim', drums: { snare: null, rim: '...X..' } },
+      { name: 'Toms', drums: { tomL: 'x..x..', hhc: 'x.xx.x' } },
     ],
   },
   {
@@ -443,6 +487,8 @@ export const GROOVES = [
     vars: [
       { name: 'Hats', drums: { hhc: 'x.x.x.' } },
       { name: 'Brushes', drums: { snare: 'o.ooo.' } },
+      { name: 'Ride', drums: { ride: 'x.x.x.' } },
+      { name: 'Oom-pah', drums: { kick: 'X...X.', snare: '..o...' } },
     ],
   },
 
@@ -462,6 +508,8 @@ export const GROOVES = [
     vars: [
       { name: 'Push', drums: { kick: 'X.x...X.x.' } },
       { name: 'Ride', drums: { hhc: null, ride: 'x.xxx.xxx.' } },
+      { name: '2+3', drums: { kick: 'X...X.....', snare: '..X.....X.' } },
+      { name: 'Sparse', drums: { hhc: 'x...x.x...', kick: 'X.........' } },
     ],
   },
   {
@@ -480,6 +528,8 @@ export const GROOVES = [
     vars: [
       { name: 'Driving', drums: { kick: 'X...X...X.....', snare: '..X...X.....X.' } },
       { name: 'Ride', drums: { kick: 'X.......X.x...', hhc: null, ride: 'x.x.x.x.x.x.x.' } },
+      { name: '3+2+2', drums: { kick: 'X.....X...X...', snare: '...X......X...' } },
+      { name: 'Cowbell', drums: { cowbell: 'X...X...X.x.x.' } },
     ],
   },
   // ---------------------------------------------------------------- more grooves
@@ -494,6 +544,8 @@ export const GROOVES = [
     vars: [
       { name: 'Open', drums: { snare: '......X.....', hho: '..x.....x...', hhc: 'x..x.xx..x.x' } },
       { name: 'Ride', drums: { hhc: '...x.....x..', ride: 'x.xx.xx.xx.x' } },
+      { name: 'Kick push', drums: { kick: 'X.....X..x.x' } },
+      { name: 'Brushes', drums: { hhc: null, snare: 'g.gg.gX.gg.g' } },
     ],
   },
   {
@@ -507,6 +559,8 @@ export const GROOVES = [
     vars: [
       { name: 'Polka beat', drums: { kick: 'X.X.X.X.', snare: '.X.X.X.X' } },
       { name: 'Crash ride', drums: { hhc: null, crash: 'X.x.X.x.' } },
+      { name: 'Half-time', drums: { snare: '....X...', kick: 'X.....x.' } },
+      { name: 'Ride', drums: { hhc: null, ride: 'xxxxxxxx' } },
     ],
   },
   {
@@ -520,6 +574,8 @@ export const GROOVES = [
     vars: [
       { name: 'Cymbal', drums: { crash: 'X...............', ride: '....x.......x...' } },
       { name: 'Street beat', drums: { kick: 'X.....x...X..x..', snare: 'X.gxx.gxX.gxx.gx' } },
+      { name: 'Bass drum', drums: { kick: 'X..x..x.X..x..x.' } },
+      { name: 'Tambourine', drums: { tamb: 'x.x.X.x.x.x.X.x.' } },
     ],
   },
   {
@@ -533,6 +589,8 @@ export const GROOVES = [
     vars: [
       { name: 'Roto-toms', drums: { tomH: '..x.......x.....', tomL: '...x.......x....' } },
       { name: 'Sparse', drums: { cowbell: 'X.....x...x.....', conga: null } },
+      { name: 'Busy', drums: { kick: 'X..x..x...X..x..', conga: '..x..xx...x..xx.' } },
+      { name: 'Ride', drums: { hhc: null, ride: 'x.x.x.x.x.x.x.x.' } },
     ],
   },
   {
@@ -546,6 +604,8 @@ export const GROOVES = [
     vars: [
       { name: 'Busy kick', drums: { kick: 'X..x..x.X..x..x.' } },
       { name: 'Open hats', drums: { hhc: 'x.x.x.x.x.x.x.x.', hho: '.......x.......x' } },
+      { name: 'Sparse', drums: { kick: 'X.....x...X.....', hhc: 'x.x.x.x.x.x.x.x.' } },
+      { name: 'Tambourine', drums: { tamb: '....X.......X...' } },
     ],
   },
   {
@@ -559,6 +619,8 @@ export const GROOVES = [
     vars: [
       { name: 'Rim', drums: { snare: null, rim: '....x.......x...' } },
       { name: 'Shaker', drums: { hhc: null, shaker: 'xoxoxoxoxoxoxoxo' } },
+      { name: 'Lazy', drums: { kick: 'X.........X..x..', hhc: 'x.x.x.x.x.x.x.x.' } },
+      { name: 'Vinyl hats', drums: { hhc: 'xxxxxxxxxxxxxxxx' } },
     ],
   },
   {
@@ -572,6 +634,8 @@ export const GROOVES = [
     vars: [
       { name: 'Four kick', drums: { kick: 'X.X.X.X.' } },
       { name: 'Ride', drums: { hhc: null, ride: 'x.x.x.x.' } },
+      { name: 'Rocksteady', drums: { kick: '....X...', snare: '....X...' } },
+      { name: 'Two-tone', drums: { kick: 'X.X.X.X.', snare: '..X...X.', hhc: 'x.x.x.x.' } },
     ],
   },
   {
@@ -585,6 +649,8 @@ export const GROOVES = [
     vars: [
       { name: 'Clap', drums: { snare: null, clap: '...x..x....x..x.' } },
       { name: 'Percussion', drums: { conga: '..x...x...x...x.', shaker: 'xoxoxoxoxoxoxoxo' } },
+      { name: 'Rim', drums: { snare: null, rim: '...x..x....x..x.' } },
+      { name: 'Open hats', drums: { hhc: 'x...x...x...x...', hho: '..x...x...x...x.' } },
     ],
   },
   {
@@ -598,6 +664,8 @@ export const GROOVES = [
     vars: [
       { name: 'Conga', drums: { conga: '..x..xx.' } },
       { name: 'Cowbell', drums: { cowbell: 'x.x.x.x.' } },
+      { name: 'Rebajada', drums: { kick: 'X.......', rim: '....x...' } },
+      { name: 'Guacharaca', drums: { shaker: 'xxXxxxXx' } },
     ],
   },
   {
@@ -611,6 +679,8 @@ export const GROOVES = [
     vars: [
       { name: 'Snare', drums: { rim: null, snare: '..g..x....x..g..' } },
       { name: 'Cascara', drums: { cowbell: null, ride: 'x.xx.x.xx.x.x.xx' } },
+      { name: 'Kick variation', drums: { kick: 'X..x...x..X..x..' } },
+      { name: 'Hi-hat', drums: { cowbell: null, hhc: 'x.x.x.x.x.x.x.x.' } },
     ],
   },
   {
@@ -624,6 +694,8 @@ export const GROOVES = [
     vars: [
       { name: 'Kit', drums: { snare: '...x.....x..', hhc: 'x..x..x..x..' } },
       { name: 'Toms', drums: { tomH: '.....x......', tomL: '........x..x' } },
+      { name: 'Fast bell', drums: { cowbell: 'x.xx.xx.x.x.' } },
+      { name: 'Sparse', drums: { conga: null, kick: 'X...........' } },
     ],
   },
   {
@@ -637,6 +709,8 @@ export const GROOVES = [
     vars: [
       { name: 'Conga', drums: { conga: '..x...x...x..xx.' } },
       { name: 'Hi-hat', drums: { shaker: null, hhc: 'x.x.x.x.x.x.x.x.' } },
+      { name: 'Kick 4', drums: { kick: 'X...X...X...X...' } },
+      { name: 'Clave', drums: { clave: 'x..x..x...x.x...' } },
     ],
   },
   {
@@ -650,6 +724,8 @@ export const GROOVES = [
     vars: [
       { name: 'Brushes', drums: { ride: null, snare: 'o..o.oo..' } },
       { name: 'Comping', drums: { snare: '.....g..g' } },
+      { name: 'Two-feel', drums: { kick: 'g.....g..' } },
+      { name: 'Hats', drums: { ride: null, hhc: 'x..x.xx..' } },
     ],
   },
   {
@@ -663,6 +739,8 @@ export const GROOVES = [
     vars: [
       { name: 'Two-beat', drums: { snare: '....X.......X...', hhc: 'x.x.x.x.x.x.x.x.' } },
       { name: 'Brushes', drums: { snare: 'gxgxgxgXgxgxgxgX' } },
+      { name: 'Shuffle', drums: { snare: 'o.oX.oo.oX.o....' } },
+      { name: 'Boom-chick', drums: { kick: 'X.......X.......', snare: '....X.......X...', hhc: 'x.x.x.x.x.x.x.x.' } },
     ],
   },
   {
@@ -676,6 +754,8 @@ export const GROOVES = [
     vars: [
       { name: 'Tambourine', drums: { tamb: '...X.....X..', clap: null } },
       { name: 'Driving', drums: { kick: 'X..x..X..x..', hhc: 'x.xx.xx.xx.x' } },
+      { name: 'Organ shout', drums: { kick: 'X..X..X..X..', snare: '...X.....X..', tamb: 'x.xx.xx.xx.x' } },
+      { name: 'Ride', drums: { hhc: '...x.....x..', ride: 'x.xx.xx.xx.x' } },
     ],
   },
 ];

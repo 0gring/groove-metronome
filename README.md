@@ -33,7 +33,7 @@ waits until ready; a groove or sound change while playing switches only once its
 is light enough for phones: one-oscillator organ with a shared Leslie, monophonic bass and horns, chords that
 release the previous chord, a short reverb, and headroom so the limiter never distorts.
 
-## Grooves (41, each with 3 variations)
+## Grooves (41, each with 5 variations)
 
 | Style | Grooves |
 |---|---|
@@ -49,8 +49,8 @@ release the previous chord, a short reverb, and headroom so the limiter never di
 | Odd Meters | 5/4 (3+2), 7/8 (2+2+3) |
 | Country & Gospel | Country Train Beat, Gospel Shuffle |
 
-Every groove has a main pattern (A) and two variations (B, C), e.g. Rock *Push* / *Ride*, Funk *16th hats* /
-*Open hats*, Bossa *2-3 clave* / *Ride*, Reggae *Steppers* / *Rockers*. **Mix** plays A A A B, A A A C…, and
+Every groove has a main pattern (A) and four variations (B–E), e.g. Rock *Push* / *Ride*, Funk *16th hats* /
+*Open hats*, Bossa *2-3 clave* / *Ride*, Reggae *Steppers* / *Rockers*. **Mix** plays A A A B, A A A C, … A A A E, and
 **Fills** adds a snare-to-toms fill at the end of every 4 or 8 bars with a crash on the next downbeat.
 
 ## Features
@@ -103,6 +103,17 @@ the fretboard, a **loop from bar X to bar Y**, and everything else still works: 
 "you play" mode, call & response, gap trainer, count-in. The selected groove's drums play along when its
 meter matches the piece; otherwise you get the click.
 
+### Song library
+
+Built-in **public-domain** songs, arranged for practice with chords, melody and a bass line in the style of the
+song: When the Saints Go Marching In, Amazing Grace, Ode to Joy, Auld Lang Syne, Greensleeves, House of the Rising
+Sun (traditional), Drunken Sailor and a 12-bar blues. Pick **your part** (bass line or melody): it shows as tab and
+on the fretboard while the app plays the other part, the chords and the drums. **Mute my part** lets you play it
+yourself; loop, practice speed and the other tools all work.
+
+Tabs of copyrighted songs can't be bundled with the app, but **🔎 Find tabs online** searches Songsterr or Ultimate
+Guitar for any song; copy a text tab there and **📋 Paste tab** to practise it (it stays on your device).
+
 ### Sheet-music PDFs → MusicXML (Audiveris)
 
 Printed notation can be converted into playable MusicXML with **[Audiveris](https://github.com/Audiveris/audiveris)**
@@ -148,6 +159,7 @@ node tests/tuner.test.mjs     # pitch detector accuracy on synthetic bass notes
 node tests/importers.test.mjs # ASCII tab parser and .mxl unzip (sample files in tests/fixtures/)
 node tests/audio.test.mjs     # plucked-string bass/guitar tuning
 node tests/voicings.test.mjs  # guitar shapes and keyboard voice leading
+node tests/songs.test.mjs     # song library: bars add up, parts in range
 ```
 
 ## Adding a groove
@@ -173,6 +185,7 @@ js/practice.js        "My music" library, piece view, PDF viewer
 js/importers.js       ASCII tab + MusicXML/.mxl parsers
 js/library.js         IndexedDB storage for imported files
 js/omr.js             GitHub upload/polling for sheet-music conversion
+js/songs.js           built-in public-domain song library (chords, melody, generated bass)
 js/pdfview.js         PDF rendering / text extraction (loads vendor/pdfjs on demand)
 vendor/pdfjs/         pdf.js 4.10.38 legacy build (Apache-2.0)
 sw.js, manifest.webmanifest, icons/   PWA / offline / install

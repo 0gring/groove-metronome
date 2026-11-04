@@ -101,6 +101,25 @@
         <button id="pasteBtn" class="secondary" aria-expanded="false" aria-controls="pasteBox">📋 Paste tab</button>
       </div>
       <p class="hint">Text tabs (.txt), MusicXML (.musicxml / .mxl — export it from MuseScore, Guitar Pro, Sibelius…) or PDF.</p>
+      <div class="field-row song-row">
+        <label>📚 Song library (public-domain songs)
+          <select id="songSelect"><option value="">Choose a song to practise…</option></select>
+        </label>
+      </div>
+      <details class="find-tabs">
+        <summary>🔎 Find tabs online</summary>
+        <p class="hint">Search a tab site for any song, copy a text tab, then come back and tap <b>📋 Paste tab</b>.
+          Tabs you paste stay on this device.</p>
+        <div class="field-row">
+          <label>Song and artist
+            <input type="text" id="tabQuery" autocomplete="off" placeholder="e.g. My Girl Temptations bass">
+          </label>
+        </div>
+        <div class="btn-row">
+          <button id="searchSongsterr" class="secondary">Songsterr</button>
+          <button id="searchUG" class="secondary">Ultimate Guitar</button>
+        </div>
+      </details>
       <div id="pasteBox" class="paste-box" hidden>
         <input type="text" id="pasteName" placeholder="Name (e.g. song title)" aria-label="Name for the pasted tab">
         <textarea id="pasteText" rows="8" spellcheck="false" aria-label="Tab text" placeholder="G|-----------------|&#10;D|---------5--7----|&#10;A|-5---7-----------|&#10;E|-----------------|"></textarea>
@@ -142,6 +161,12 @@
         <p id="pieceInfo" class="hint"></p>
         <div id="pieceControls">
           <div class="field-row">
+            <label id="songPartWrap">Your part
+              <select id="songPart">
+                <option value="bass">Bass line</option>
+                <option value="melody">Melody</option>
+              </select>
+            </label>
             <label id="beatsWrap">Beats per bar
               <select id="pieceBeats"></select>
             </label>
@@ -162,6 +187,7 @@
               <input type="number" id="loopTo" min="1" inputmode="numeric">
             </label>
           </div>
+          <label class="check" id="songMuteWrap"><input type="checkbox" id="songMute"> Mute my part (I play it)</label>
           <div class="btn-row">
             <button id="loopAll" class="secondary">Loop whole piece</button>
             <button id="fileTempo" class="secondary" hidden></button>

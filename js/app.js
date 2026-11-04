@@ -181,9 +181,18 @@ function adaptForPiece(g) {
   g.spb = g.beats * g.sub;
   g.piece = true;
   g.bass = null;
-  g.comp = null;
+  // songs: the chords are comped in the groove's own rhythm (when the meter matches)
+  g.comp = piece.song && g.backing && def.chords ? parseComp(def.chords) : null;
   g.melody = null;
   g.prog = parseProg(['0:']);
+}
+
+/** The song chord sounding at a bar/beat, as a chord relative to the key (for the voicing code). */
+function songChordAt(pb, beat) {
+  let c = null;
+  for (const x of piece.chordsByBar?.[pb] ?? []) if (x.beat <= beat + 1e-6) c = x;
+  c ??= piece.chordsByBar?.[pb]?.[0];
+  return c ? { root: mod(c.pc - state.key, 12), q: c.q } : null;
 }
 
 function makeBass(g) {
@@ -349,7 +358,7 @@ function scheduleStep(bar, s, t) {
     }
   }
 
-  const chord = g.prog[bar % g.prog.length];
+  const chord = (g.piece && piece?.chordsByBar && songChordAt(pieceBarOf(bar), s / g.sub)) || g.prog[bar % g.prog.length];
   const pc = mod(state.key + chord.root, 12);
 
   if (L.bass.on && g.bass && !ev.yourTurn) {
@@ -362,14 +371,26 @@ function scheduleStep(bar, s, t) {
     const from = s / g.sub;
     const to = (s + 1) / g.sub;
     const beatSec = 60 / playBpm();
-    const layer = piece.layer;
-    if (L[layer].on && !ev.yourTurn) {
-      for (const n of piece.byBar[pb] ?? []) {
+    const playPart = (layer, list) => {
+      for (const n of list ?? []) {
         if (n.beat < from - 1e-6 || n.beat >= to - 1e-6) continue;
         const nt = at(t + (n.beat - from) * beatSec);
         const dur = n.dur * beatSec * 0.92;
         if (layer === 'bass') audio.bass(nt, n.midi, dur, vj(0.85), soundFor('bass'), n.dead);
         else if (!n.dead) audio.melody(nt, n.midi, dur, vj(0.8), soundFor('melody'));
+      }
+    };
+    // your part (unless you're playing it yourself)
+    if (L[piece.layer].on && !ev.yourTurn && !piece.focusMuted) playPart(piece.layer, piece.byBar[pb]);
+    // songs: the rest of the band
+    for (const part of piece.accomp ?? []) if (L[part.layer].on) playPart(part.layer, part.byBar[pb]);
+    if (piece.chordsByBar && !g.comp && L.chords.on) {
+      // no matching groove rhythm: play each chord where it changes
+      for (const c of piece.chordsByBar[pb] ?? []) {
+        if (c.beat < from - 1e-6 || c.beat >= to - 1e-6) continue;
+        const notes = keysVoicing(c.pc, c.q, lastVoicing);
+        lastVoicing = notes;
+        audio.chord(at(t + (c.beat - from) * beatSec), notes, c.dur * beatSec * 0.95, vj(0.7), soundFor('chords'));
       }
     }
   }
@@ -1497,7 +1518,7 @@ const practice = initPractice({
       p.byBar = Array.from({ length: p.bars }, () => []);
       for (const n of p.notes) p.byBar[n.bar]?.push(n);
       const sorted = p.notes.map((n) => n.midi).sort((a, b) => a - b);
-      p.layer = sorted[Math.floor(sorted.length / 2)] < 55 ? 'bass' : 'melody';
+      p.layer = p.forceLayer ?? (sorted[Math.floor(sorted.length / 2)] < 55 ? 'bass' : 'melody');
       loop.start = Math.max(0, Math.min(from, p.bars - 1));
       loop.end = Math.max(loop.start, Math.min(to ?? p.bars - 1, p.bars - 1));
     }
@@ -1508,6 +1529,14 @@ const practice = initPractice({
     showChordNow(0);
     if (wasPlaying) start();
   },
+  /** Songs: switch to the song's groove (keeps the current tempo; the song sets it). */
+  useGroove(id) {
+    if (state.grooveId === id) return;
+    state.grooveId = id;
+    state.variation = '0';
+    state.swing = null;
+  },
+  strings: () => state.strings,
   setLoop(from, to) {
     loop.start = from;
     loop.end = to;

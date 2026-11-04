@@ -294,3 +294,11 @@ body.piece-mode .groove-only { display: none !important; }
 .load-fill { position: absolute; inset: 0 auto 0 0; width: 0; background: color-mix(in srgb, var(--accent-2) 55%, transparent); transition: width 0.15s linear; }
 .load-text { position: relative; display: block; text-align: center; font-size: 0.8rem; line-height: 24px; color: var(--text); font-variant-numeric: tabular-nums; }
 .play[aria-busy="true"] { opacity: 0.75; }
+
+/* Songs */
+.song-row { margin-top: 4px; }
+.find-tabs { margin: 8px 0 4px; }
+.find-tabs input[type="text"] {
+  font: inherit; color: var(--text); background: var(--card-2); border: 1px solid var(--line);
+  border-radius: 12px; min-height: 44px; padding: 0 10px; width: 100%;
+}

@@ -18,7 +18,7 @@ const NOTE_PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 export const BASS4 = { tuning: [43, 38, 33, 28], names: ['G', 'D', 'A', 'E'] };
 export const BASS5 = { tuning: [43, 38, 33, 28, 23], names: ['G', 'D', 'A', 'E', 'B'] };
 const BASS6 = { tuning: [48, 43, 38, 33, 28, 23], names: ['C', 'G', 'D', 'A', 'E', 'B'] };
-const GUITAR = { tuning: [64, 59, 55, 50, 45, 40], names: ['e', 'B', 'G', 'D', 'A', 'E'] };
+export const GUITAR = { tuning: [64, 59, 55, 50, 45, 40], names: ['e', 'B', 'G', 'D', 'A', 'E'] };
 
 const pcOf = (name) => {
   const m = /^([A-Ga-g])([#b]?)$/.exec(name || '');

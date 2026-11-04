@@ -1,6 +1,7 @@
 // "My music": import tabs / MusicXML / PDF, keep them in a library, and practise them.
 
-import { parseAsciiTab, parseMusicXML, readMxl, findTabBlocks } from './importers.js';
+import { parseAsciiTab, parseMusicXML, readMxl, findTabBlocks, BASS4, BASS5 } from './importers.js';
+import { SONGS, buildSong } from './songs.js';
 import { listItems, getItem, putItem, deleteItem, newId } from './library.js';
 import * as omr from './omr.js';
 
@@ -33,6 +34,11 @@ export function initPractice(api) {
 
   async function build(item) {
     const st = item.settings;
+    if (item.type === 'song') {
+      const piece = buildSong(item.song, st.part ?? 'bass', api.strings?.() === 5 ? BASS5 : BASS4);
+      piece.focusMuted = !!st.mute;
+      return { piece };
+    }
     const opts = { beats: st.beats ?? 4, title: item.name, partIndex: st.part ?? null, octave: st.octave };
     if (item.type === 'tab') return { piece: parseAsciiTab(item.data, opts) };
     if (item.type === 'xml' || item.type === 'mxl') {
@@ -94,7 +100,29 @@ export function initPractice(api) {
     }
   }
 
+  const songKey = (id) => `groove-metronome:${id}`;
+  /** Built-in songs aren't stored in the library: only their settings (part, loop…) are remembered. */
+  function songItem(id) {
+    const song = SONGS.find((x) => `song:${x.id}` === id);
+    if (!song) return null;
+    let settings = {};
+    try {
+      settings = JSON.parse(localStorage.getItem(songKey(id))) ?? {};
+    } catch {
+      /* ignore */
+    }
+    return { id, name: song.title, type: 'song', song, settings };
+  }
+
   async function save(item) {
+    if (item.type === 'song') {
+      try {
+        localStorage.setItem(songKey(item.id), JSON.stringify(item.settings));
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
     const { _xml, _text, ...plain } = item;
     await putItem(plain);
   }
@@ -141,8 +169,10 @@ export function initPractice(api) {
   // ---------------------------------------------------------------- open / close
 
   async function open(id, prebuilt = null) {
-    const item = await getItem(id);
+    const item = id.startsWith('song:') ? songItem(id) : await getItem(id);
     if (!item) return;
+    if (item.type === 'song') api.useGroove(item.song.groove);
+    $('songSelect').value = item.type === 'song' ? id : '';
     const built = prebuilt ?? (await build(item));
     active = { item, ...built, page: item.settings.page ?? 1 };
     try {
@@ -196,6 +226,10 @@ export function initPractice(api) {
     if (!active) return;
     const { piece, item } = active;
     const parts = [];
+    if (item.type === 'song') {
+      parts.push(item.song.origin);
+      parts.push(`your part: ${piece.part === 'melody' ? 'melody' : 'bass line'}${piece.focusMuted ? ' (you play it)' : ''}`);
+    }
     if (piece) {
       parts.push(`${piece.bars} bars in ${piece.beats}/${piece.beatType}`);
       parts.push(`${piece.tuning.length}-string ${piece.tuning[0] >= 59 ? 'guitar' : 'bass'} tab`);
@@ -214,6 +248,14 @@ export function initPractice(api) {
       const sel = $('pieceBeats');
       sel.replaceChildren(...[2, 3, 4, 5, 6, 7].map((n) => new Option(`${n}`, String(n))));
       sel.value = String(piece.beats);
+    }
+    const isSong = item.type === 'song';
+    $('songPartWrap').hidden = !isSong;
+    $('songMuteWrap').hidden = !isSong;
+    if (isSong) {
+      $('songPart').value = piece.part;
+      $('songPart').querySelector('[value="melody"]').disabled = !item.song.melody;
+      $('songMute').checked = !!item.settings.mute;
     }
     const isXml = item.type === 'xml' || item.type === 'mxl';
     $('octWrap').hidden = !isXml;
@@ -312,7 +354,10 @@ export function initPractice(api) {
         else node.style.opacity = '0.55';
       });
     });
-    $('pieceBarInfo').textContent = `Bar ${pb + 1} of ${piece.bars}  →  next: bar ${next + 1}`;
+    const chordNames = (b) => (piece.chordsByBar?.[b] ?? []).map((c) => c.name).join(' ');
+    $('pieceBarInfo').textContent = piece.chordsByBar
+      ? `Bar ${pb + 1} of ${piece.bars}: ${chordNames(pb)}  →  next: ${chordNames(next)}`
+      : `Bar ${pb + 1} of ${piece.bars}  →  next: bar ${next + 1}`;
     el.setAttribute('aria-label', `Bar ${pb + 1}: ${spoken.join(', ') || 'rest'}`);
   }
 
@@ -517,6 +562,31 @@ export function initPractice(api) {
     }
   };
   $('closePiece').onclick = close;
+
+  // built-in songs
+  for (const song of SONGS) $('songSelect').append(new Option(song.title, `song:${song.id}`));
+  $('songSelect').onchange = (e) => {
+    if (e.target.value) open(e.target.value).catch((err) => msg(err.message, 'err'));
+  };
+  $('songPart').onchange = (e) => {
+    active.item.settings.part = e.target.value;
+    rebuild();
+  };
+  $('songMute').onchange = (e) => {
+    active.item.settings.mute = e.target.checked;
+    active.piece.focusMuted = e.target.checked;
+    save(active.item);
+    updateInfo();
+  };
+
+  // find tabs online (they open on the tab site; paste a text tab back here to practise it)
+  const search = (url) => {
+    const q = $('tabQuery').value.trim();
+    if (!q) return $('tabQuery').focus();
+    window.open(url + encodeURIComponent(q), '_blank', 'noopener');
+  };
+  $('searchSongsterr').onclick = () => search('https://www.songsterr.com/?pattern=');
+  $('searchUG').onclick = () => search('https://www.ultimate-guitar.com/search.php?search_type=title&value=');
   $('omrBtn').onclick = startConvert;
   initOmrSetup();
   schedulePoll(false);
