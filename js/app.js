@@ -214,13 +214,25 @@ function bassNoteMidi(note, bar) {
 
 let cur = buildGroove(grooveDef(state.grooveId));
 const swingVal = () => (cur.sub === 2 || cur.sub === 4 ? state.swing ?? cur.def.swing ?? 50 : 50);
-const soundFor = (layer) => (state.sounds[layer] === 'auto' ? cur.sounds[layer] : state.sounds[layer]);
+/** The sound the user chose for a layer (on a groove definition, for 'Auto'). */
+const requestedSound = (layer, def = cur.def) =>
+  state.sounds[layer] !== 'auto' ? state.sounds[layer] : def === cur.def ? cur.sounds[layer] : def[`${layer === 'chords' ? 'chord' : layer}Sound`] ?? cur.sounds[layer];
+const lastReadySound = {};
+/** The sound to play now: the requested one once it's in memory, otherwise the previous one (no hiccups). */
+function soundFor(layer) {
+  const want = requestedSound(layer);
+  const inst = SOUNDS[layer][want]?.inst;
+  if (inst && audio.ctx && !audio.isReady(inst) && lastReadySound[layer]) return lastReadySound[layer];
+  lastReadySound[layer] = want;
+  return want;
+}
 
 // ------------------------------------------------------------------ scheduler
 
 const sched = { playing: false, bar: 0, s: 0, nextTime: 0 };
 let lastVoicing = null; // previous keyboard voicing, for smooth voice leading
 let pendingRebuild = false;
+let pendingReady = true; // the next groove's sounds are in memory
 let gridGen = 0;
 const visQ = [];
 
@@ -252,7 +264,7 @@ function tick() {
 }
 
 function scheduleStep(bar, s, t) {
-  if (s === 0 && pendingRebuild) {
+  if (s === 0 && pendingRebuild && pendingReady) {
     pendingRebuild = false;
     cur = buildGroove(grooveDef(state.grooveId));
     renderGroove();
@@ -392,12 +404,18 @@ function scheduleStep(bar, s, t) {
   }
 }
 
+let starting = false;
 async function start() {
   audio.init();
-  audio.loadSamples(); // recorded drums & keys load in the background; synth sounds play until then
-  warmSounds();
   applyMix();
-  const resumed = audio.resume();
+  const resumed = audio.resume(); // must be called inside the tap
+  if (!soundsReady()) {
+    // load every sound into memory first: decoding while playing is what causes crackles on phones
+    starting = true;
+    updatePlayUI();
+    await prepare();
+    starting = false;
+  }
   await resumed;
   visQ.length = 0;
   sched.bar = state.countIn ? -1 : 0;
@@ -426,7 +444,10 @@ function stop() {
   setStatus('');
 }
 
-const toggle = () => (sched.playing ? stop() : start());
+const toggle = () => {
+  if (starting) return; // still loading: the music starts by itself when ready
+  return sched.playing ? stop() : start();
+};
 
 // ------------------------------------------------------------------ visuals
 
@@ -461,7 +482,8 @@ function frame() {
 
   let key;
   let msg;
-  if (last.countIn) [key, msg] = ['count', 'Count-in…'];
+  if (pendingRebuild) [key, msg] = pendingReady ? ['pend', 'Switching at the next bar…'] : ['pendload', `Loading sounds for ${grooveDef(state.grooveId).name}…`];
+  else if (last.countIn) [key, msg] = ['count', 'Count-in…'];
   else if (last.muted) [key, msg] = ['gap', 'Silent bars — keep the time!'];
   else if (state.bassMode === 'call') [key, msg] = last.yourTurn ? ['you', 'Your turn — play it back'] : ['app', 'Listen…'];
   else if (state.trainer.on) [key, msg] = [`tr${state.bpm}`, `Tempo trainer: ${state.bpm} → ${state.trainer.target} BPM`];
@@ -509,7 +531,8 @@ function setStatus(msg) {
 function updatePlayUI() {
   const b = $('playBtn');
   b.setAttribute('aria-pressed', String(sched.playing));
-  b.querySelector('.play-label').textContent = sched.playing ? 'Stop' : 'Play';
+  b.setAttribute('aria-busy', String(starting));
+  b.querySelector('.play-label').textContent = starting ? 'Loading…' : sched.playing ? 'Stop' : 'Play';
 }
 
 // ------------------------------------------------------------------ rendering
@@ -975,11 +998,47 @@ function renderMixerDefaults() {
 
 /** Start loading the recorded instruments the current sounds use (they load once, then stay cached). */
 function warmSounds() {
-  if (!audio.ctx) return;
+  if (audio.ctx) prepare();
+}
+
+/** Recorded instruments a groove needs with the current sound choices (only layers that are on). */
+function neededInstruments(def = cur.def) {
+  const names = new Set();
   for (const layer of ['bass', 'chords', 'melody']) {
-    const p = SOUNDS[layer][soundFor(layer)];
-    if (p?.inst) audio.instrument(p.inst);
+    if (!state.layers[layer].on) continue;
+    const inst = SOUNDS[layer][requestedSound(layer, def)]?.inst;
+    if (inst) names.add(inst);
   }
+  return [...names];
+}
+
+const soundsReady = (def = cur.def) => !!audio.coreReady && neededInstruments(def).every((n) => audio.isReady(n));
+
+let prepJob = 0;
+/** Load everything a groove needs into memory, showing progress. Resolves when ready (or after 20 s). */
+function prepare(def = cur.def) {
+  audio.init();
+  const job = ++prepJob;
+  const bar = $('loadBar');
+  if (soundsReady(def)) {
+    bar.hidden = true;
+    return Promise.resolve();
+  }
+  bar.hidden = false;
+  const show = (f) => {
+    if (job !== prepJob) return;
+    const pct = Math.round(f * 100);
+    bar.querySelector('.load-fill').style.width = `${pct}%`;
+    bar.querySelector('.load-text').textContent = `Loading sounds… ${pct}%`;
+    bar.setAttribute('aria-valuenow', String(pct));
+    if (starting) $('playBtn').querySelector('.play-label').textContent = `Loading ${pct}%`;
+  };
+  show(0);
+  const done = audio.preload(neededInstruments(def), show);
+  const timeout = new Promise((r) => setTimeout(r, 20000));
+  return Promise.race([done, timeout]).then(() => {
+    if (job === prepJob) bar.hidden = true;
+  });
 }
 
 function applyMix() {
@@ -1050,7 +1109,19 @@ function rebuild() {
   if (sched.playing) {
     pendingRebuild = true; // switch on the next bar line so the music stays in time
     $('grooveSelect').value = state.grooveId;
-    setStatus('Switching at the next bar…');
+    const def = grooveDef(state.grooveId);
+    if (soundsReady(def)) {
+      pendingReady = true;
+      setStatus('Switching at the next bar…');
+    } else {
+      // load the new groove's sounds first, then switch on the next bar line
+      pendingReady = false;
+      setStatus(`Loading sounds for ${def.name}…`);
+      prepare(def).then(() => {
+        pendingReady = true;
+        if (pendingRebuild) setStatus('Switching at the next bar…');
+      });
+    }
     lastStatusKey = 'pending';
   } else {
     cur = buildGroove(grooveDef(state.grooveId));
@@ -1409,6 +1480,7 @@ function init() {
   }
 
   setBpm(state.bpm ?? cur.def.bpm);
+  prepare(); // start loading the sounds right away, so Play is instant
   setSpeed(state.speed);
   renderGroove();
 }

@@ -28,6 +28,11 @@ square/saw/pluck/bell leads are synthesized. Mixed in stereo with room reverb an
 (~3 MB) are cached for offline use when the app installs; each other instrument (~0.5–1.5 MB) downloads the
 first time it's used and is then available offline too.
 
+**No crackles:** everything a groove needs is loaded into memory *before* it plays (progress bar on open; Play
+waits until ready; a groove or sound change while playing switches only once its sounds are in), and the engine
+is light enough for phones: one-oscillator organ with a shared Leslie, monophonic bass and horns, chords that
+release the previous chord, a short reverb, and headroom so the limiter never distorts.
+
 ## Grooves (41, each with 3 variations)
 
 | Style | Grooves |

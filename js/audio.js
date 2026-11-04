@@ -252,54 +252,67 @@ export class AudioEngine {
     return buf;
   }
 
-  /** Load the recorded samples (drums first, then keys). Safe to call more than once. */
+  /** Loading progress per group ('core' = drums + keys, or an instrument name): { total, done, promise }. */
+  group(name) {
+    this.groups ??= {};
+    return (this.groups[name] ??= { total: 0, done: 0, promise: null });
+  }
+
+  decode(url, grp) {
+    return fetch(url).then(async (res) => {
+      if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+      const data = await res.arrayBuffer();
+      const buf = await new Promise((resolve, reject) => this.ctx.decodeAudioData(data, resolve, reject));
+      grp.done++;
+      return buf;
+    });
+  }
+
+  /** Load the recorded drums and keys into memory. Safe to call more than once. */
   loadSamples(base = 'samples/') {
+    const grp = this.group('core');
     this.loading ??= (async () => {
-      const ctx = this.ctx;
-      const get = async (path) => {
-        const res = await fetch(base + path);
-        if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
-        const data = await res.arrayBuffer();
-        return new Promise((resolve, reject) => ctx.decodeAudioData(data, resolve, reject));
-      };
       const manifest = await (await fetch(base + 'manifest.json')).json();
+      grp.total = Object.keys(manifest.drums).length + manifest.ep.length + manifest.piano.length;
       await Promise.all(
         Object.entries(manifest.drums).map(async ([name, path]) => {
-          this.samples[name] = await get(path);
+          this.samples[name] = await this.decode(base + path, grp);
         }),
       );
       for (const kind of ['ep', 'piano']) {
         const list = await Promise.all(
-          manifest[kind].map(async ([file, measured]) => ({ midi: measured, buffer: await get(`${kind}/${file}.flac`) })),
+          manifest[kind].map(async ([file, measured]) => ({ midi: measured, buffer: await this.decode(`${base}${kind}/${file}.flac`, grp) })),
         );
         this.keys[kind] = list.sort((a, b) => a.midi - b.midi);
       }
+      this.coreReady = true;
       return true;
     })().catch((e) => {
       console.warn('Samples unavailable, using synthesized sounds:', e.message);
       this.loading = null;
       return false;
     });
+    grp.promise = this.loading;
     return this.loading;
   }
 
-  /** Load one sampled instrument on first use. Returns true when ready. */
+  isReady(name) {
+    return !!this.inst?.[name]?.ready;
+  }
+
+  /** Start loading one sampled instrument into memory. Returns true once it's ready. */
   instrument(name) {
     this.inst ??= {};
     const cur = this.inst[name];
     if (cur?.ready) return true;
     if (!cur) {
       this.inst[name] = { ready: false };
-      (async () => {
+      const grp = this.group(name);
+      grp.promise = (async () => {
         this.instManifest ??= fetch('samples/inst/manifest.json').then((r) => r.json());
         const m = (await this.instManifest)[name];
-        const ctx = this.ctx;
-        const get = async (file) => {
-          const res = await fetch(`samples/inst/${name}/${file}`);
-          if (!res.ok) throw new Error(`${name}/${file}: HTTP ${res.status}`);
-          const data = await res.arrayBuffer();
-          return new Promise((resolve, reject) => ctx.decodeAudioData(data, resolve, reject));
-        };
+        grp.total = (m.sus?.length ?? 0) + (m.stac?.length ?? 0) + (m.dead?.length ?? 0);
+        const get = (file) => this.decode(`samples/inst/${name}/${file}`, grp);
         const layer = (art) => Promise.all((m[art] ?? []).map(async ([file, pitch]) => ({ midi: pitch, buffer: await get(`${art}-${file}.flac`) })));
         const [sus, stac, dead] = await Promise.all([layer('sus'), layer('stac'), Promise.all((m.dead ?? []).map(get))]);
         Object.assign(this.inst[name], { sus, stac, dead, ready: true });
@@ -309,6 +322,30 @@ export class AudioEngine {
       });
     }
     return false;
+  }
+
+  /**
+   * Load the drums/keys and these instruments into memory before playing.
+   * onProgress(fraction 0..1) is called while loading. Resolves when everything is in (or has failed).
+   */
+  preload(names, onProgress) {
+    this.loadSamples();
+    names.forEach((n) => this.instrument(n));
+    const groups = ['core', ...names].map((n) => this.group(n));
+    let shown = 0;
+    const frac = () => {
+      // only once every group knows its size, and never going backwards
+      if (groups.some((g) => !g.total && g.promise && !g.settled)) return shown;
+      const total = groups.reduce((a, g) => a + g.total, 0);
+      shown = Math.max(shown, total ? groups.reduce((a, g) => a + g.done, 0) / total : 0);
+      return shown;
+    };
+    groups.forEach((g) => g.promise?.then(() => (g.settled = true)));
+    const timer = onProgress ? setInterval(() => onProgress(frac()), 100) : null;
+    return Promise.all(groups.map((g) => g.promise)).then(() => {
+      clearInterval(timer);
+      onProgress?.(1);
+    });
   }
 
   /** Play a sampled instrument note (falls back to the caller's synth if it isn't loaded yet). */

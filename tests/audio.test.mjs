@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import { pluck } from '../js/audio.js';
 import { detectPitch, freqToNote } from '../js/tuner.js';
 
+// the plucked string starts from random noise: seed it so the test is repeatable
+let seed = 12345;
+Math.random = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+
 const sr = 44100;
 const cases = { 'E1 (bass)': 28, 'A1': 33, 'D2': 38, 'G2': 43, 'C3': 48, 'E3 (guitar)': 52, 'A3': 57 };
 const settings = [
