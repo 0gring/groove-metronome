@@ -1,7 +1,7 @@
 import { AudioEngine, SOUNDS } from './audio.js';
 import { GROOVES, DRUM_ORDER, DRUM_LABELS, PROGRESSIONS } from './grooves.js';
 import {
-  QUALITIES, parseDrum, parseLine, parseComp, parseProg, generateMelody, generateBass, beatPositions, resolveNote, cleanDrum, expandDrum, expandLine, mod, lcm,
+  QUALITIES, parseDrum, parseLine, parseComp, parseProg, generateMelody, generateBass, beatPositions, guitarVoicing, keysVoicing, resolveNote, cleanDrum, expandDrum, expandLine, mod, lcm,
 } from './theory.js';
 import { Tuner } from './tuner.js';
 import { initPractice } from './practice.js';
@@ -219,6 +219,7 @@ const soundFor = (layer) => (state.sounds[layer] === 'auto' ? cur.sounds[layer] 
 // ------------------------------------------------------------------ scheduler
 
 const sched = { playing: false, bar: 0, s: 0, nextTime: 0 };
+let lastVoicing = null; // previous keyboard voicing, for smooth voice leading
 let pendingRebuild = false;
 let gridGen = 0;
 const visQ = [];
@@ -364,10 +365,20 @@ function scheduleStep(bar, s, t) {
   if (L.chords.on && g.comp) {
     const e = g.comp.events[abs % g.comp.length];
     if (e) {
-      let base = 48 + pc;
-      if (base < 52) base += 12;
-      const notes = (QUALITIES[chord.q] ?? QUALITIES['']).map((i) => base + i);
-      audio.chord(at(tt), notes, e.len * sd * 0.9, vj(e.v), soundFor('chords'));
+      const snd = soundFor('chords');
+      const dur = e.len * sd * 0.9;
+      let notes;
+      let dir = 'down';
+      if (snd === 'guitar') {
+        // real guitar shapes; short chops on the top strings; down-strums on the beat, up-strums in between
+        notes = guitarVoicing(pc, chord.q);
+        if (dur < 0.2 && notes.length > 3) notes = notes.slice(-4, -1);
+        dir = s % (g.sub === 3 ? 3 : 2) === 0 ? 'down' : 'up';
+      } else {
+        notes = keysVoicing(pc, chord.q, lastVoicing);
+        lastVoicing = notes;
+      }
+      audio.chord(at(tt), notes, dur, vj(e.v), snd, dir);
     }
   }
 

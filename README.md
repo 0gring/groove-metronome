@@ -14,7 +14,13 @@ and works offline.
 | Upright bass | Double bass pizzicato + dead notes — [Meatbass](https://github.com/sfzinstruments/karoryfer.meatbass) |
 | Guitar | Gretsch hollow-body — [Black And Green Guitars](https://github.com/sfzinstruments/karoryfer.black-and-green-guitars) (ringing + short chops) |
 | E-piano, grand piano, tenor sax, vibes | [VCSL](https://github.com/sgossner/VCSL) |
-| Trumpet, flute | [VSCO 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) |
+| Trumpet, flute, string section | [VSCO 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) |
+
+**Chords are played like a player would:** the guitar uses real guitar shapes (E- and A-shape, every chord
+type), strums down on the beat and up in between, and plays short funk chops on the top strings; piano, e-piano,
+organ, strings and pad use smooth voice leading (each chord takes the inversion nearest the last one) and
+rootless jazz voicings for 7th/9th chords. The organ is a drawbar model with rotating-speaker (Leslie) shimmer
+and key click.
 
 Short notes use the recorded staccato takes, every note is tuned from its measured pitch, and velocity
 changes level and tone. Trap, house and drum & bass use a synthesized kick; synth bass, 808, organ, pad and the
@@ -22,20 +28,21 @@ square/saw/pluck/bell leads are synthesized. Mixed in stereo with room reverb an
 (~3 MB) are cached for offline use when the app installs; each other instrument (~0.5–1.5 MB) downloads the
 first time it's used and is then available offline too.
 
-## Grooves (26, each with 3 variations)
+## Grooves (41, each with 3 variations)
 
 | Style | Grooves |
 |---|---|
 | Basic | Click-only metronome (1–12 beats, quarter/eighth/triplet/16th subdivisions) |
-| Rock & Pop | Rock, Pop (I–V–vi–IV), Metal double-kick |
-| Funk & Soul | Funk 16ths, Disco, Neo-Soul |
+| Rock & Pop | Rock, Pop (I–V–vi–IV), Metal double-kick, Half-Time Shuffle, Punk |
+| Funk & Soul | Funk 16ths, Disco, Neo-Soul, New Orleans Second Line, Go-Go |
 | Motown | Backbeat (snare on all four), Four-on-the-Floor, Shuffle, Ballad — with tambourine |
-| Hip-Hop & Electronic | Boom Bap, Trap, House, Drum & Bass |
-| Latin & Caribbean | Bossa Nova, Samba, Salsa (2-3 son clave), Reggae One Drop |
-| African | Afrobeat |
-| Jazz & Blues | Jazz Swing (walking bass, ii–V–I), 12-bar Blues Shuffle |
+| Hip-Hop & Electronic | Boom Bap, Trap, House, Drum & Bass, New Jack Swing, Lo-fi Hip-Hop |
+| Latin & Caribbean | Bossa Nova, Samba, Salsa (2-3 son clave), Reggae One Drop, Ska, Reggaeton (dembow), Cumbia, Songo |
+| African | Afrobeat, Afro-Cuban 6/8 (bembé bell), Highlife |
+| Jazz & Blues | Jazz Swing (walking bass, ii–V–I), 12-bar Blues Shuffle, Jazz Waltz |
 | Ballads & 3s | 6/8 Ballad, Waltz 3/4 |
 | Odd Meters | 5/4 (3+2), 7/8 (2+2+3) |
+| Country & Gospel | Country Train Beat, Gospel Shuffle |
 
 Every groove has a main pattern (A) and two variations (B, C), e.g. Rock *Push* / *Ride*, Funk *16th hats* /
 *Open hats*, Bossa *2-3 clave* / *Ride*, Reggae *Steppers* / *Rockers*. **Mix** plays A A A B, A A A C…, and
@@ -135,6 +142,7 @@ node tests/grooves.test.mjs   # validate groove data & theory helpers
 node tests/tuner.test.mjs     # pitch detector accuracy on synthetic bass notes
 node tests/importers.test.mjs # ASCII tab parser and .mxl unzip (sample files in tests/fixtures/)
 node tests/audio.test.mjs     # plucked-string bass/guitar tuning
+node tests/voicings.test.mjs  # guitar shapes and keyboard voice leading
 ```
 
 ## Adding a groove

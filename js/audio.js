@@ -19,7 +19,8 @@ export const SOUNDS = {
   },
   chords: {
     epiano: { label: 'E-piano', sampled: 'ep', r: 0.3, waves: [{ type: 'sine' }, { type: 'sine', mult: 2, gain: 0.4, decay: 0.3 }, { type: 'sine', mult: 7, gain: 0.08, decay: 0.05 }], cutoff: 6000, a: 0.003, d: 0.9, s: 0.25, r: 0.25, gain: 0.45 },
-    organ: { label: 'Organ', waves: [{ type: 'sine' }, { type: 'sine', mult: 2, gain: 0.5 }, { type: 'sine', mult: 3, gain: 0.3 }, { type: 'sine', mult: 4, gain: 0.15 }], cutoff: 5000, a: 0.008, d: 0.05, s: 1, r: 0.05, gain: 0.28 },
+    organ: { label: 'Organ', waves: [{ type: 'sine', mult: 0.5, gain: 0.55 }, { type: 'sine' }, { type: 'sine', mult: 1.5, gain: 0.45 }, { type: 'sine', mult: 2, gain: 0.5 }, { type: 'sine', mult: 3, gain: 0.25 }, { type: 'sine', mult: 4, gain: 0.2 }], cutoff: 6000, a: 0.004, d: 0.05, s: 1, r: 0.05, gain: 0.22, vibrato: { rate: 6.3, depth: 9, delay: 0 }, leslie: { rate: 6.3, depth: 0.25 }, click: 0.18 },
+    strings: { label: 'Strings', inst: 'strings', waves: [{ type: 'sawtooth', detune: -7 }, { type: 'sawtooth', detune: 7 }], cutoff: 1800, q: 0.7, a: 0.18, d: 0.4, s: 0.85, r: 0.4, gain: 0.2 },
     piano: { label: 'Piano', sampled: 'piano', r: 0.35, waves: [{ type: 'triangle' }, { type: 'sine', mult: 2, gain: 0.3, decay: 0.4 }], cutoff: 5000, a: 0.002, d: 1.2, s: 0.2, r: 0.3, gain: 0.4 },
     guitar: { label: 'Guitar', inst: 'guitar', ks: { bright: 0.75, pick: 0.13, decay: 0.994, lp: 4200, hp: 140, gain: 2.2, r: 0.06 }, waves: [{ type: 'sawtooth' }], cutoff: 900, cutEnv: 2500, q: 2, a: 0.002, d: 0.14, s: 0.2, r: 0.06, gain: 0.32, strum: 0.009 },
     pad: { label: 'Pad', waves: [{ type: 'sawtooth', detune: -9 }, { type: 'sawtooth', detune: 9 }], cutoff: 1100, q: 1, a: 0.25, d: 0.4, s: 0.8, r: 0.5, gain: 0.3 },
@@ -66,6 +67,7 @@ const INST = {
   flute: { level: 0.8, r: 0.12, stacBelow: 0.16, pan: -0.15 },
   sax: { level: 0.8, r: 0.12, stacBelow: 0.18, pan: 0.1 },
   vibes: { level: 0.55, r: 0.6, pan: -0.1 },
+  strings: { level: 2.2, r: 0.45 },
 };
 const REVERB_SEND = { click: 0, drums: 0.1, bass: 0.02, chords: 0.22, melody: 0.2 };
 
@@ -585,6 +587,21 @@ export class AudioEngine {
       node.connect(sh);
       node = sh;
     }
+    if (p.leslie) {
+      // rotating speaker: amplitude tremolo in step with the pitch wobble (vibrato)
+      const trem = ctx.createGain();
+      trem.gain.value = 1 - p.leslie.depth / 2;
+      const depth = ctx.createGain();
+      depth.gain.value = p.leslie.depth / 2;
+      this.osc('sine', p.leslie.rate, t, end).connect(depth).connect(trem.gain);
+      node.connect(trem);
+      node = trem;
+    }
+    if (p.click) {
+      const n = this.noise(t, 0.012);
+      const g = this.envGain(t, peak * p.click, 0.0005, 0.006);
+      n.connect(this.filter('bandpass', 2500, 0.8)).connect(g).connect(this.buses[busName]);
+    }
     node.connect(amp).connect(this.buses[busName]);
   }
 
@@ -680,12 +697,19 @@ export class AudioEngine {
     else this.voice('bass', p, t, midi, dur, vel);
   }
 
-  chord(t, midis, dur, vel, sound) {
+  /**
+   * Play a chord. dir: 'down' strums low to high, 'up' high to low (lighter, quicker) — like a guitarist.
+   * Keyboard sounds get a tiny natural spread instead of a strum.
+   */
+  chord(t, midis, dur, vel, sound, dir = 'down') {
     const p = SOUNDS.chords[sound] ?? SOUNDS.chords.epiano;
-    const per = vel / Math.sqrt(midis.length);
-    midis.forEach((m, i) => {
-      const at = t + i * (p.strum ?? 0);
-      const pan = (i / Math.max(1, midis.length - 1) - 0.5) * 0.5; // spread the chord across the stereo field
+    const strummed = sound === 'guitar';
+    const order = strummed && dir === 'up' ? [...midis].reverse() : midis;
+    const step = strummed ? (dir === 'up' ? 0.007 : 0.011) : 0;
+    const per = (vel / Math.sqrt(midis.length)) * (strummed && dir === 'up' ? 0.85 : 1);
+    order.forEach((m, i) => {
+      const at = t + i * step + (strummed ? 0 : Math.random() * 0.006);
+      const pan = (midis.indexOf(m) / Math.max(1, midis.length - 1) - 0.5) * 0.5; // spread the chord across the stereo field
       if (p.sampled && this.sampledKey('chords', p.sampled, p, at, m, dur, per, pan)) return;
       if (p.inst && this.playInst('chords', p.inst, at, m, dur, per, { pan })) return;
       if (p.ks) return this.ksVoice('chords', 'guitar', p, at, m, dur, per, { pan });

@@ -11,4 +11,5 @@ its measured pitch (harmonic-sum and autocorrelation).
 | `upright/` | Double bass pizzicato + percussive dead notes — Karoryfer Meatbass (sfzinstruments/karoryfer.meatbass) |
 | `guitar/` | Gretsch Anniversary — Karoryfer Black And Green Guitars (sfzinstruments/karoryfer.black-and-green-guitars) |
 | `trumpet/`, `flute/` | VSCO 2 Community Edition (sgossner/VSCO-2-CE) |
+| `strings/` | Viola + violin sections, vibrato sustain — VSCO 2 Community Edition |
 | `sax/`, `vibes/` | Versilian Community Sample Library (sgossner/VCSL): tenor saxophone, vibraphone |

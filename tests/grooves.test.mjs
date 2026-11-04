@@ -1,6 +1,7 @@
 // Run: node tests/grooves.test.mjs
 import assert from 'node:assert/strict';
 import { GROOVES, DRUM_ORDER, PROGRESSIONS } from '../js/grooves.js';
+import { SOUNDS } from '../js/audio.js';
 import { parseDrum, parseLine, parseComp, parseProg, generateMelody, generateBass, beatPositions, resolveNote, parseNoteToken, cleanDrum, expandDrum, expandLine } from '../js/theory.js';
 
 let n = 0;
@@ -21,6 +22,9 @@ for (const g of GROOVES) {
     }
   }
   if (!g.basic) assert.ok((g.vars ?? []).length >= 2, `${g.id}: expected at least 2 variations`);
+  for (const [layer, key] of [['bass', 'bassSound'], ['chords', 'chordSound'], ['melody', 'melodySound']]) {
+    if (g[key]) assert.ok(SOUNDS[layer][g[key]], `${g.id}: unknown ${layer} sound "${g[key]}"`);
+  }
   if (g.bass) check('bass', parseLine(g.bass).length);
   if (g.melody) check('melody', parseLine(g.melody).length);
   if (g.chords) check('chords', parseComp(g.chords).length);

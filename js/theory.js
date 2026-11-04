@@ -279,3 +279,69 @@ export function generateBass({ beats, sub, kick }, style, rng = Math.random, div
   }
   return t.join(' ');
 }
+
+// ------------------------------------------------------------------ chord voicings
+
+// Movable guitar shapes (intervals from the root, low string first): root on the low E string ("E shape")
+// or on the A string ("A shape").
+const E_SHAPES = {
+  '': [0, 7, 12, 16, 19, 24], m: [0, 7, 12, 15, 19, 24], 7: [0, 7, 10, 16, 19, 24], m7: [0, 7, 10, 15, 19, 24],
+  maj7: [0, 7, 11, 16, 19], m7b5: [0, 6, 10, 15], dim: [0, 6, 12, 15], sus: [0, 7, 12, 17, 19, 24],
+  6: [0, 7, 9, 16, 19], m6: [0, 7, 9, 15, 19], 9: [0, 4, 10, 14, 19], m9: [0, 3, 10, 14, 19], 5: [0, 7, 12],
+};
+const A_SHAPES = {
+  '': [0, 7, 12, 16, 19], m: [0, 7, 12, 15, 19], 7: [0, 7, 10, 16, 19], m7: [0, 7, 10, 15, 19],
+  maj7: [0, 7, 11, 16, 19], m7b5: [0, 6, 10, 15], dim: [0, 6, 12, 15], sus: [0, 7, 12, 17, 19],
+  6: [0, 7, 9, 16, 19], m6: [0, 7, 9, 15, 19], 9: [0, 4, 10, 14, 19], m9: [0, 3, 10, 14, 19], 5: [0, 7, 12],
+};
+
+/** Guitar chord (MIDI notes, low to high) in the lowest comfortable position. */
+export function guitarVoicing(rootPc, quality) {
+  const fretE = mod(rootPc - 4, 12); // fret of the root on the low E string (E2 = 40)
+  const fretA = mod(rootPc - 9, 12); // fret of the root on the A string (A2 = 45)
+  const useE = fretE <= 4 || fretE <= fretA;
+  const shape = (useE ? E_SHAPES : A_SHAPES)[quality] ?? (useE ? E_SHAPES : A_SHAPES)[''];
+  const root = useE ? 40 + fretE : 45 + fretA;
+  return shape.map((i) => root + i);
+}
+
+/** Pitch classes (relative to the root) a keyboard player would voice for this chord. */
+export function keyTones(quality) {
+  const iv = (QUALITIES[quality] ?? QUALITIES['']).map((i) => i % 12);
+  const unique = [...new Set(iv)];
+  // 7th / 6th chords: rootless voicing (3rd, 5th, 7th/6th + 9th) — the bass already plays the root
+  if (unique.length >= 4 && !['m7b5', 'dim'].includes(quality)) return [...new Set([...unique.filter((i) => i !== 0), 2])];
+  return unique;
+}
+
+/**
+ * Keyboard voicing with smooth voice leading: the inversion (close position, inside lo..hi)
+ * whose notes move least from the previous chord. Returns MIDI notes, low to high.
+ */
+export function keysVoicing(rootPc, quality, prev = null, lo = 52, hi = 77) {
+  const pcs = keyTones(quality).map((i) => mod(rootPc + i, 12)).sort((a, b) => a - b);
+  const cands = [];
+  for (let r = 0; r < pcs.length; r++) {
+    const order = [...pcs.slice(r), ...pcs.slice(0, r)];
+    for (let base = lo; base < lo + 12; base++) {
+      if (mod(base, 12) !== order[0]) continue;
+      const v = [base];
+      for (const pc of order.slice(1)) {
+        let n = v[v.length - 1] + 1;
+        while (mod(n, 12) !== pc) n++;
+        v.push(n);
+      }
+      for (let shift = 0; v[v.length - 1] + shift <= hi; shift += 12) cands.push(v.map((n) => n + shift));
+    }
+  }
+  const centre = (lo + hi) / 2 - 2;
+  const mean = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+  const cost = (v) => {
+    if (!prev?.length) return Math.abs(mean(v) - centre);
+    // small pull toward the middle of the range so the voicing doesn't drift over many bars
+    const pull = 0.35 * Math.abs(mean(v) - centre);
+    if (prev.length === v.length) return v.reduce((s, n, i) => s + Math.abs(n - prev[i]), 0) + pull;
+    return Math.abs(mean(v) - mean(prev)) * v.length + 1 + pull;
+  };
+  return cands.reduce((best, v) => (cost(v) < cost(best) ? v : best), cands[0]);
+}
