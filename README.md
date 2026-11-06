@@ -94,7 +94,9 @@ Every groove has a main pattern (A) and four variations (B–E), e.g. Rock *Push
 - **Drums: kick only / kick + snare** to practise locking in with the kick drum.
 - **Chord changes:** swap in a one-chord vamp, I–IV–V, I–vi–IV–V, ii–V–I, minor, 12-bar blues or the
   circle of 4ths (all 12 keys) over any groove.
-- **Bass tuner:** microphone tuner that tracks down to low B (5-string), plus reference notes B E A D G.
+- **Bass tuner:** microphone tuner that tracks down to low B (5-string), plus reference notes B E A D G —
+  a steady tone (tap again to stop) built from the string's harmonics, so it's audible and in tune even on a
+  phone speaker that can't play the 31–41 Hz fundamentals of the low strings.
 
 ## Practise your own music
 

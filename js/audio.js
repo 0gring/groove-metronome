@@ -787,6 +787,56 @@ export class AudioEngine {
           : this.voice('bass', p, t, midi, dur, vel));
   }
 
+  /**
+   * Steady reference tone for tuning. Low strings (B0 31 Hz, E1 41 Hz) are below what phone speakers can play,
+   * so the tone is built mostly from harmonics: the ear still hears the right pitch (the "missing fundamental"),
+   * and harmonics are what you match when tuning with 12th-fret harmonics anyway. Returns stop().
+   */
+  refTone(midi, seconds = 12, onEnd = null) {
+    const ctx = this.ctx;
+    if (!this.refWave) {
+      const n = 24;
+      const real = new Float32Array(n + 1);
+      const imag = new Float32Array(n + 1);
+      for (let k = 1; k <= n; k++) imag[k] = (k === 1 ? 0.6 : 1) / k ** 0.8; // bright, like a string
+      this.refWave = ctx.createPeriodicWave(real, imag);
+    }
+    const f0 = mtof(midi);
+    const t = ctx.currentTime + 0.01;
+    const o = ctx.createOscillator();
+    o.setPeriodicWave(this.refWave);
+    o.frequency.value = f0;
+    const hp = ctx.createBiquadFilter(); // nothing a small speaker can't play anyway: saves headroom
+    hp.type = 'highpass';
+    hp.frequency.value = 70;
+    const lp = ctx.createBiquadFilter(); // soften the top so it isn't buzzy
+    lp.type = 'lowpass';
+    lp.frequency.value = Math.min(4000, f0 * 30);
+    const amp = ctx.createGain();
+    amp.gain.setValueAtTime(0, t);
+    amp.gain.linearRampToValueAtTime(0.9, t + 0.01);
+    amp.gain.setTargetAtTime(0.55, t + 0.01, 0.25); // a pluck-like start, then a steady tone
+    o.connect(hp).connect(lp).connect(amp).connect(this.master);
+    o.start(t);
+    let stopped = false;
+    const stop = (fade = 0.08) => {
+      if (stopped) return;
+      stopped = true;
+      const now = ctx.currentTime;
+      amp.gain.cancelScheduledValues(now);
+      amp.gain.setValueAtTime(amp.gain.value, now);
+      amp.gain.setTargetAtTime(0, now, fade / 3);
+      o.stop(now + fade * 2 + 0.05);
+    };
+    amp.gain.setTargetAtTime(0, t + seconds - 0.5, 0.15);
+    o.stop(t + seconds + 0.2);
+    o.onended = () => {
+      stopped = true;
+      onEnd?.();
+    };
+    return stop;
+  }
+
   organNote(t, midi, dur, vel, click) {
     const ctx = this.ctx;
     const o = ctx.createOscillator();

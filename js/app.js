@@ -1476,15 +1476,33 @@ function init() {
   setLabels(state.fbLabels);
 
   // tuner
+  // reference notes: tap to sound a steady tone, tap again (or another string) to stop
+  let refStop = null;
+  let refBtn = null;
+  const endRef = () => {
+    refStop?.();
+    refStop = null;
+    refBtn?.setAttribute('aria-pressed', 'false');
+    refBtn = null;
+  };
   [['B', 23], ['E', 28], ['A', 33], ['D', 38], ['G', 43]].forEach(([n, m]) => {
     const b = document.createElement('button');
     b.textContent = n;
     b.setAttribute('aria-label', `Play ${n} string reference`);
+    b.setAttribute('aria-pressed', 'false');
     b.onclick = async () => {
+      const again = refBtn === b;
+      endRef();
+      if (again) return;
       audio.init();
-      applyMix();
-      await audio.resume();
-      audio.bass(audio.now + 0.02, m, 2.2, 0.9, 'upright');
+      const resumed = audio.resume(); // inside the tap (phones only allow sound after a touch)
+      refBtn = b;
+      b.setAttribute('aria-pressed', 'true');
+      await resumed;
+      if (refBtn !== b) return;
+      // the tone stops by itself after a while: release the button then (only if it's still this one)
+      const stop = audio.refTone(m, 12, () => refStop === stop && endRef());
+      refStop = stop;
     };
     $('refRow').append(b);
   });

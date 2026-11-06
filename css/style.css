@@ -194,6 +194,7 @@ details { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 8px;
 summary { cursor: pointer; font-weight: 600; min-height: 40px; display: flex; align-items: center; }
 .ref-row { display: flex; gap: 8px; margin: 8px 0 12px; flex-wrap: wrap; }
 .ref-row button { flex: 1 1 48px; font-weight: 700; }
+.ref-row button[aria-pressed="true"] { background: var(--accent); color: #111; border-color: var(--accent); }
 #tunerBtn { width: 100%; }
 #tunerBtn[aria-pressed="true"] { background: var(--accent-2); color: #10201e; }
 .tuner { display: grid; justify-items: center; gap: 6px; margin-top: 12px; }
