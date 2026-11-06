@@ -253,6 +253,12 @@
             <option value="kick">Lock to the kick</option>
             <option value="walk">Walking line</option>
             <option value="random">🎲 Random line</option>
+            <optgroup label="Drills — follow the chord changes">
+              <option value="arp">Arpeggio up</option>
+              <option value="arpud">Arpeggio up &amp; down</option>
+              <option value="scale">Scale up &amp; down</option>
+              <option value="thirds">Scale in 3rds</option>
+            </optgroup>
           </select>
         </label>
         <label>Note values
@@ -344,6 +350,20 @@
         <button id="newMelody">🎲 New melody</button>
         <button id="origMelody" class="secondary">Original melody</button>
       </div>
+      <details id="delayBox" class="delay-box">
+        <summary>🎧 Bluetooth headphones delay</summary>
+        <p class="hint">Bluetooth headphones and speakers play the sound later than the screen shows it, so the lights,
+          tab and fretboard run ahead of the music. Measure the delay once per pair of headphones (or set it by ear).</p>
+        <label>Delay <output id="outDelayOut">0 ms</output>
+          <input type="range" id="outDelay" min="0" max="500" step="5">
+        </label>
+        <div class="btn-row">
+          <button id="calibBtn">👆 Measure by tapping</button>
+          <button id="delayReset" class="secondary">Reset to 0</button>
+        </div>
+        <div id="calibPad" class="calib-pad" role="button" hidden>Tap here on every click</div>
+        <p id="calibMsg" class="hint" aria-live="polite"></p>
+      </details>
     </section>
 
     <!-- Practice -->

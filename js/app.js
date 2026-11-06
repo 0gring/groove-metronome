@@ -2,6 +2,7 @@ import { AudioEngine, SOUNDS } from './audio.js';
 import { GROOVES, DRUM_ORDER, DRUM_LABELS, PROGRESSIONS } from './grooves.js';
 import {
   QUALITIES, parseDrum, parseLine, parseComp, parseProg, generateMelody, generateBass, beatPositions, guitarVoicing, keysVoicing, resolveNote, cleanDrum, expandDrum, expandLine, mod, lcm,
+  generateDrill, isDrill, chordScale, DRILLS,
 } from './theory.js';
 import { Tuner } from './tuner.js';
 import { initPractice } from './practice.js';
@@ -23,15 +24,6 @@ const FILL_SKIP = new Set(['snare', 'rim', 'clap', 'tomH', 'tomL', 'hho', 'crash
 const DRUM_SETS = { full: null, ks: ['kick', 'snare', 'rim', 'clap'], k: ['kick'] };
 const STRINGS = { 4: { open: [43, 38, 33, 28], names: ['G', 'D', 'A', 'E'] }, 5: { open: [43, 38, 33, 28, 23], names: ['G', 'D', 'A', 'E', 'B'] } };
 const IV_NAMES = ['R', '♭2', '2', '♭3', '3', '4', '♭5', '5', '♭6', '6', '♭7', '7'];
-const SCALE = {
-  ionian: ['Major scale', [0, 2, 4, 5, 7, 9, 11]],
-  aeolian: ['Natural minor', [0, 2, 3, 5, 7, 8, 10]],
-  dorian: ['Dorian', [0, 2, 3, 5, 7, 9, 10]],
-  mixo: ['Mixolydian', [0, 2, 4, 5, 7, 9, 10]],
-  locrian: ['Locrian', [0, 1, 3, 5, 6, 8, 10]],
-  dim: ['Diminished (W-H)', [0, 2, 3, 5, 6, 8, 9, 11]],
-};
-const SCALE_FOR = { '': 'ionian', maj7: 'ionian', 6: 'ionian', m: 'aeolian', m7: 'dorian', m9: 'dorian', m6: 'dorian', 7: 'mixo', 9: 'mixo', sus: 'mixo', 5: 'aeolian', m7b5: 'locrian', dim: 'dim' };
 const FRETS = 12;
 const SPEEDS = [50, 60, 70, 85, 100];
 const COUNTS = { 1: [''], 2: ['', '&'], 3: ['', '&', 'a'], 4: ['', 'e', '&', 'a'] };
@@ -72,6 +64,7 @@ const DEFAULTS = {
   strings: 4,
   fbMode: 'chord',
   fbLabels: 'iv',
+  outDelay: 0, // ms: extra output delay (Bluetooth headphones/speakers) so the visuals match what you hear
   speed: 100,
   speedAuto: { on: false, bars: 8 },
 };
@@ -197,6 +190,7 @@ function songChordAt(pb, beat) {
 
 function makeBass(g) {
   if (state.bassStyle === 'orig') return g.def.bass ? parseLine(expandLine(g.def.bass, g.k ?? 1)) : null;
+  if (isDrill(state.bassStyle)) return parseLine(generateDrill({ beats: g.beats, sub: g.sub }, state.bassStyle, feelDiv(g.def)));
   return parseLine(generateBass({ beats: g.beats, sub: g.sub, kick: g.drumStr.kick }, state.bassStyle, Math.random, feelDiv(g.def)));
 }
 
@@ -479,7 +473,7 @@ let lastStatusKey = '';
 function frame() {
   requestAnimationFrame(frame);
   if (!sched.playing || !audio.ctx) return;
-  const now = audio.now - audio.latency;
+  const now = audio.now - audio.latency - (state.outDelay || 0) / 1000;
   let last = null;
   while (visQ.length && visQ[0].t <= now) {
     last = visQ.shift();
@@ -639,15 +633,18 @@ function renderFretboard(chord) {
   const chordIv = QUALITIES[chord.q] ?? QUALITIES[''];
   const tones = new Set(chordIv.map((i) => mod(i, 12)));
   const minorish = chordIv[1] === 3 || chord.q === '5';
-  const [scaleName, scale] = SCALE[SCALE_FOR[chord.q] ?? 'ionian'];
+  const [scaleName, scale] = chordScale(chord.q);
   const pent = minorish ? [0, 3, 5, 7, 10] : [0, 2, 4, 7, 9];
 
+  // drills show the shape you're practising
+  const drill = isDrill(state.bassStyle) ? state.bassStyle : null;
+  const mode = drill ? (drill.startsWith('arp') ? 'chord' : 'scale') : state.fbMode;
   let shown;
   let what;
-  if (state.fbMode === 'scale') {
+  if (mode === 'scale') {
     shown = new Set([...scale, ...tones]);
     what = `chord tones + ${scaleName}`;
-  } else if (state.fbMode === 'pent') {
+  } else if (mode === 'pent') {
     shown = new Set(pent);
     what = `${minorish ? 'minor' : 'major'} pentatonic`;
   } else {
@@ -659,8 +656,10 @@ function renderFretboard(chord) {
   const cap = $('fbCaption');
   cap.replaceChildren(chordName(chord) + ' ');
   const sp = document.createElement('span');
-  sp.textContent = `— ${what}`;
+  sp.textContent = drill ? `— ${DRILLS[drill].toLowerCase()} drill: ${what}` : `— ${what}`;
   cap.append(sp);
+  $('fbMode').disabled = !!drill;
+  $('fbMode').value = mode; // a drill picks what to show; your own choice comes back afterwards
 
   drawFretboard((si, f, pc) => {
     const iv = mod(pc - rootPc, 12);
@@ -1066,6 +1065,76 @@ function applyMix() {
   for (const l of LAYERS) audio.setBusGain(l.id, state.layers[l.id].vol);
 }
 
+// ------------------------------------------------------------------ output delay calibration
+
+/**
+ * Measure how late sound reaches the ears (Bluetooth adds 100-300 ms): play clicks, the user taps along,
+ * and the median gap between each click and its tap becomes the delay for the visuals.
+ */
+let calibrating = false;
+async function calibrateDelay(onDone) {
+  if (calibrating) return;
+  if (sched.playing) stop();
+  calibrating = true;
+  audio.init();
+  await audio.resume();
+  const pad = $('calibPad');
+  const msgEl = $('calibMsg');
+  const btn = $('calibBtn');
+  const N = 16;
+  const COUNT_IN = 4;
+  const gap = 0.6; // 100 BPM
+  const t0 = audio.now + 0.5;
+  const clicks = Array.from({ length: N }, (_, i) => t0 + i * gap);
+  audio.setBusGain('click', 0.9);
+  clicks.forEach((t, i) => audio.click(t, i % 4 === 0 ? 'accent' : 'beat'));
+  const taps = [];
+  const onTap = (e) => {
+    e.preventDefault();
+    // when the finger actually landed, in audio-clock time
+    const ago = Math.max(0, (performance.now() - e.timeStamp) / 1000);
+    taps.push(audio.now - ago);
+    pad.classList.remove('tapped');
+    void pad.offsetWidth;
+    pad.classList.add('tapped');
+  };
+  pad.hidden = false;
+  btn.disabled = true;
+  pad.addEventListener('pointerdown', onTap);
+  msgEl.textContent = 'Listen to 4 clicks, then tap the pad on every click you hear…';
+  await new Promise((r) => setTimeout(r, (clicks[N - 1] - audio.now + gap) * 1000));
+  pad.removeEventListener('pointerdown', onTap);
+  pad.hidden = true;
+  btn.disabled = false;
+  applyMix();
+  calibrating = false;
+
+  // match each counted click with the nearest tap
+  const offs = [];
+  for (const c of clicks.slice(COUNT_IN)) {
+    let best = null;
+    for (const t of taps) if (best === null || Math.abs(t - c) < Math.abs(best - c)) best = t;
+    if (best !== null && Math.abs(best - c) < gap / 2) offs.push(best - c);
+  }
+  if (offs.length < 6) {
+    msgEl.textContent = `Only ${offs.length} taps matched the clicks — try again and tap on every click.`;
+    return;
+  }
+  offs.sort((a, b) => a - b);
+  const median = offs[Math.floor(offs.length / 2)];
+  const spread = offs[Math.floor(offs.length * 0.8)] - offs[Math.floor(offs.length * 0.2)];
+  // the browser already accounts for its own reported latency; keep only the extra
+  const extra = Math.round(((median - audio.latency) * 1000) / 5) * 5;
+  state.outDelay = Math.max(0, Math.min(500, extra));
+  save();
+  onDone();
+  msgEl.textContent = spread > 0.08
+    ? `Set to ${state.outDelay} ms, but your taps were uneven — try once more for a steadier result.`
+    : state.outDelay
+      ? `Set to ${state.outDelay} ms. The lights, tab and fretboard now wait for the sound.`
+      : 'No extra delay measured — your audio is in sync.';
+}
+
 // ------------------------------------------------------------------ tempo
 
 function setBpm(v) {
@@ -1310,6 +1379,7 @@ function init() {
   $('bassStyle').onchange = (e) => {
     state.bassStyle = e.target.value;
     applyBass();
+    refreshFretboard();
   };
   $('bassFeel').onchange = (e) => {
     state.bassFeel = Number(e.target.value);
@@ -1367,6 +1437,25 @@ function init() {
     e.target.value = v;
     save();
   };
+
+  // Bluetooth / output delay
+  const showDelay = () => {
+    $('outDelay').value = state.outDelay;
+    $('outDelayOut').textContent = `${state.outDelay} ms`;
+  };
+  showDelay();
+  $('outDelay').oninput = (e) => {
+    state.outDelay = Number(e.target.value);
+    showDelay();
+    save();
+  };
+  $('delayReset').onclick = () => {
+    state.outDelay = 0;
+    showDelay();
+    save();
+    $('calibMsg').textContent = '';
+  };
+  $('calibBtn').onclick = () => calibrateDelay(showDelay);
 
   // fretboard
   $('fbMode').value = state.fbMode;

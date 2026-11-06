@@ -84,6 +84,13 @@ Every groove has a main pattern (A) and four variations (B–E), e.g. Rock *Push
   chromatic approach notes, and 🎲 random groove lines.
 - **Note values** for each style: quarter, eighth or 16th notes, counted 1 e & a in the tab (on eighth-note grooves the grid is refined to 16ths; triplet-feel grooves get swung eighths / triplets).
   Walking lines in 8ths/16ths add octave skips and ghost notes; *lock to the kick* keeps only the kick hits on that rhythm.
+- **Scale & arpeggio drills** (in *Bass line → Drills*): arpeggio up, arpeggio up & down, scale up & down
+  and scale in 3rds. They follow the chord changes — a minor 3rd on minor chords, Dorian over m7, Mixolydian
+  over 7, … — restart on each new chord, and use the chosen note values. The fretboard shows the shape you're
+  drilling, and *The app's bass → Silent (you play)* lets you play it yourself while the tab and fretboard guide you.
+- **Bluetooth headphones delay** (*Mix & sound*): Bluetooth adds 100–300 ms between the screen and your ears.
+  Tap along to 16 clicks and the app measures the delay, so the lights, tab and fretboard move with what you hear
+  (or set it by ear with the slider). Saved on the device.
 - **Drums: kick only / kick + snare** to practise locking in with the kick drum.
 - **Chord changes:** swap in a one-chord vamp, I–IV–V, I–vi–IV–V, ii–V–I, minor, 12-bar blues or the
   circle of 4ths (all 12 keys) over any groove.

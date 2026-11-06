@@ -30,12 +30,29 @@ export function chordTones(quality) {
     T: quality === 'sus' ? 5 : minor ? 3 : 4,
     F: iv.includes(6) && !iv.includes(7) ? 6 : 7,
     S: iv.length >= 4 && iv[3] >= 9 && iv[3] <= 11 ? iv[3] : minor ? 10 : 11,
+    // 4th arpeggio note: the chord's 7th (or 6th) if it has one, else the octave
+    N: iv.length >= 4 && iv[3] >= 9 && iv[3] <= 11 ? iv[3] : 12,
   };
 }
+
+/** The scale that fits each chord quality (used by the fretboard and the scale drills). */
+export const SCALES = {
+  ionian: ['Major scale', [0, 2, 4, 5, 7, 9, 11]],
+  aeolian: ['Natural minor', [0, 2, 3, 5, 7, 8, 10]],
+  dorian: ['Dorian', [0, 2, 3, 5, 7, 9, 10]],
+  mixo: ['Mixolydian', [0, 2, 4, 5, 7, 9, 10]],
+  locrian: ['Locrian', [0, 1, 3, 5, 6, 8, 10]],
+  dim: ['Diminished (W-H)', [0, 2, 3, 5, 6, 8, 9, 11]],
+};
+export const SCALE_FOR = { '': 'ionian', maj7: 'ionian', 6: 'ionian', m: 'aeolian', m7: 'dorian', m9: 'dorian', m6: 'dorian', 7: 'mixo', 9: 'mixo', sus: 'mixo', 5: 'aeolian', m7b5: 'locrian', dim: 'dim' };
+/** [name, intervals] of the chord's scale. */
+export const chordScale = (quality) => SCALES[SCALE_FOR[quality] ?? 'ionian'];
 
 /**
  * Parse a note token.
  *   R T F S      chord root / third / fifth / seventh (adapts to chord quality)
+ *   N            4th arpeggio note: 7th/6th if the chord has one, else the octave
+ *   s1 .. s15    degree of the chord's own scale (s3 is a minor 3rd on a minor chord, s8 the octave)
  *   1 b3 #4 5 8  fixed scale degrees relative to the chord root
  *   ^ / _        prefix: octave up / down (e.g. ^T, _5)
  *   x            dead (muted, percussive) note
@@ -49,7 +66,9 @@ export function parseNoteToken(tok) {
     oct += tok[0] === '^' ? 12 : -12;
     tok = tok.slice(1);
   }
-  if (tok.length === 1 && 'RTFS'.includes(tok)) return { ct: tok, oct };
+  if (tok.length === 1 && 'RTFSN'.includes(tok)) return { ct: tok, oct };
+  const sd = /^s(\d{1,2})$/.exec(tok);
+  if (sd && sd[1] >= 1 && sd[1] <= 15) return { sd: Number(sd[1]), oct };
   const m = /^([b#]?)(\d+)$/.exec(tok);
   if (!m || DEGREES[m[2]] === undefined) throw new Error(`Bad note token "${tok}"`);
   let s = DEGREES[m[2]];
@@ -61,6 +80,12 @@ export function parseNoteToken(tok) {
 /** Semitone offset from chord root for a parsed note. */
 export function resolveNote(note, quality) {
   if (note.ct) return chordTones(quality)[note.ct] + note.oct;
+  if (note.sd) {
+    if (note.sd === 8) return 12 + note.oct; // always the octave (also for 8-note scales)
+    const sc = chordScale(quality)[1];
+    const k = note.sd - 1;
+    return sc[k % sc.length] + 12 * Math.floor(k / sc.length) + note.oct;
+  }
   return note.semi;
 }
 
@@ -276,6 +301,62 @@ export function generateBass({ beats, sub, kick }, style, rng = Math.random, div
       }
       put(pos, tok, l);
     });
+  }
+  return t.join(' ');
+}
+
+// ------------------------------------------------------------------ scale & arpeggio drills
+
+export const DRILLS = {
+  arp: 'Arpeggio up',
+  arpud: 'Arpeggio up & down',
+  scale: 'Scale up & down',
+  thirds: 'Scale in 3rds',
+};
+const isDrill = (style) => style in DRILLS;
+export { isDrill };
+
+const ARP_UP = ['R', 'T', 'F', 'N', '^R', '^T', '^F', '^N'];
+const ARP_UD = ['R', 'T', 'F', 'N', '^R', 'N', 'F', 'T'];
+const sd = (list) => list.map((n) => `s${n}`);
+const SC_UP = sd([1, 2, 3, 4, 5, 6, 7, 8]);
+const SC_DOWN = sd([8, 7, 6, 5, 4, 3, 2, 1]);
+const SC_UD = sd([1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 2, 1]);
+const TH_UP = sd([1, 3, 2, 4, 3, 5, 4, 6, 5, 7, 6, 8]);
+const TH_DOWN = sd([8, 6, 7, 5, 6, 4, 5, 3, 4, 2, 3, 1]);
+
+/**
+ * A practice line that spells out each chord: arpeggios or the chord's scale, restarting on every chord change.
+ * Two bars: even bars go up, odd bars come down (short bars), so you cover the shape both ways.
+ * div: notes per beat (0 = eighths).
+ */
+export function generateDrill({ beats, sub }, kind, div = 0) {
+  const spb = beats * sub;
+  const len = spb * 2;
+  const t = Array(len).fill('.');
+  const P = beatPositions(sub, div || 2) ?? [0];
+  const n = beats * P.length; // notes per bar
+  for (let bar = 0; bar < 2; bar++) {
+    let seq;
+    const odd = bar % 2 === 1;
+    if (kind === 'arp') seq = ARP_UP;
+    else if (kind === 'arpud') seq = n < 8 && odd ? ARP_UD.slice(4).concat(ARP_UD.slice(0, 4)) : ARP_UD;
+    else if (kind === 'scale') seq = n >= 12 ? [...SC_UD, 'A'] : odd ? SC_DOWN : SC_UP;
+    else seq = n >= 16 ? [...TH_UP.slice(0, 8), ...TH_DOWN.slice(0, 8)] : odd ? TH_DOWN : TH_UP;
+    let k = 0;
+    for (let b = 0; b < beats; b++) {
+      P.forEach((p, j) => {
+        const next = j + 1 < P.length ? P[j + 1] : sub;
+        const pos = bar * spb + b * sub + p;
+        let tok = seq[k % seq.length];
+        // long scale runs end with an approach note into the next chord
+        if (kind === 'scale' && n >= 12 && k === n - 1) tok = 'A';
+        else if (tok === 'A') tok = 's1';
+        t[pos] = tok;
+        for (let q = 1; q < next - p; q++) t[pos + q] = '-';
+        k++;
+      });
+    }
   }
   return t.join(' ');
 }

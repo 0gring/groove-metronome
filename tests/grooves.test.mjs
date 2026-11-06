@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { GROOVES, DRUM_ORDER, PROGRESSIONS } from '../js/grooves.js';
 import { SOUNDS } from '../js/audio.js';
-import { parseDrum, parseLine, parseComp, parseProg, generateMelody, generateBass, beatPositions, resolveNote, parseNoteToken, cleanDrum, expandDrum, expandLine } from '../js/theory.js';
+import { parseDrum, parseLine, parseComp, parseProg, generateMelody, generateBass, beatPositions, resolveNote, parseNoteToken, cleanDrum, expandDrum, expandLine, generateDrill, DRILLS } from '../js/theory.js';
 
 let n = 0;
 const ids = new Set();
@@ -88,4 +88,23 @@ assert.equal(resolveNote(parseNoteToken('^F'), ''), 19);
 assert.equal(resolveNote(parseNoteToken('_5'), ''), -5);
 assert.equal(resolveNote(parseNoteToken('b7'), ''), 10);
 assert.equal(parseLine('R - - . 5 -').events[0].len, 3);
-console.log(`ok – ${n} grooves validated`);
+
+// scale & arpeggio drills: chord-aware tokens, right length, notes on the chosen grid
+assert.equal(resolveNote(parseNoteToken('s3'), 'm7'), 3, 'minor third in a minor chord scale');
+assert.equal(resolveNote(parseNoteToken('s3'), '7'), 4);
+assert.equal(resolveNote(parseNoteToken('s7'), '7'), 10, 'mixolydian b7');
+assert.equal(resolveNote(parseNoteToken('s8'), 'dim'), 12, 's8 is always the octave');
+assert.equal(resolveNote(parseNoteToken('N'), ''), 12, 'triad: 4th arpeggio note is the octave');
+assert.equal(resolveNote(parseNoteToken('N'), 'maj7'), 11);
+for (const kind of Object.keys(DRILLS)) {
+  for (const [beats, sub, div] of [[4, 4, 1], [4, 2, 2], [4, 4, 4], [3, 2, 0], [6, 2, 1], [4, 3, 2], [7, 2, 2]]) {
+    const line = parseLine(generateDrill({ beats, sub }, kind, div));
+    assert.equal(line.length, beats * sub * 2, `${kind} length`);
+    const first = line.events.findIndex(Boolean);
+    assert.equal(first, 0, `${kind} starts on the downbeat`);
+    assert.ok(['R', 's1'].includes(line.events[0].tok), `${kind} starts on the root`);
+    const want = (beatPositions(sub, div || 2) ?? [0]).length * beats * 2;
+    assert.equal(line.events.filter(Boolean).length, want, `${kind} ${beats}/${sub} div ${div}: one note per grid slot`);
+  }
+}
+console.log(`ok – ${n} grooves validated, drills ok`);

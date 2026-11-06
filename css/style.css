@@ -307,3 +307,14 @@ body.piece-mode .groove-only { display: none !important; }
 .section-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .section-row .chip { min-height: 36px; font-size: 0.9rem; padding: 0 12px; background: transparent; }
 .section-row .chip[aria-pressed="true"] { background: var(--accent); color: #111; border-color: var(--accent); }
+
+/* Bluetooth delay calibration */
+.delay-box { margin-top: 12px; }
+.delay-box summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+.calib-pad {
+  margin: 10px 0; min-height: 140px; display: grid; place-items: center; border-radius: 16px;
+  border: 2px dashed var(--accent-2); font-weight: 600; user-select: none; -webkit-user-select: none;
+  touch-action: manipulation; cursor: pointer;
+}
+.calib-pad.tapped { animation: calib-tap 0.18s ease-out; }
+@keyframes calib-tap { from { background: var(--accent-2); color: #111; } to { background: transparent; } }
