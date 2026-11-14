@@ -57,8 +57,7 @@ https://0gring.github.io/groove-metronome/manifest.webmanifest`, then answer usi
 4. **App content** (Policy → App content). These answers match what the app does:
    - Privacy policy: `https://0gring.github.io/groove-metronome/privacy.html`
    - Ads: **No**
-   - App access: **All functionality is available without special access.** The optional GitHub sheet-music
-     converter uses the user's own GitHub account, not a login to this app.
+   - App access: **All functionality is available without special access.**
    - Content rating questionnaire: category *Utility, productivity, communication or other*. Answer **No** to violence,
      sexual content, gambling, user interaction and sharing location. The expected result is rated for everyone.
    - Target audience: **13 and over** (avoids the extra Families-programme requirements; the app suits all ages anyway)

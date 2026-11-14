@@ -7,7 +7,8 @@ its measured pitch (harmonic-sum and autocorrelation).
 
 | Folder | Source |
 |---|---|
-| `fbass/` | Squier Jazz Bass — Karoryfer Growlybass (sfzinstruments/karoryfer.growlybass) |
+| `finger/` | Fingerstyle electric bass (5-string, B0–C4), regular, staccato and ghost notes — Karoryfer Black And Blue Basses, “Dark Black” (sfzinstruments/karoryfer.black-and-blue-basses) |
+| `slap/` | Squier Jazz Bass played hard, the “Slap bass” sound — Karoryfer Growlybass (sfzinstruments/karoryfer.growlybass) |
 | `upright/` | Double bass pizzicato + percussive dead notes — Karoryfer Meatbass (sfzinstruments/karoryfer.meatbass) |
 | `guitar/` | Gretsch Anniversary — Karoryfer Black And Green Guitars (sfzinstruments/karoryfer.black-and-green-guitars) |
 | `trumpet/`, `flute/` | VSCO 2 Community Edition (sgossner/VSCO-2-CE) |

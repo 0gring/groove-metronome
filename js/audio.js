@@ -12,7 +12,8 @@ const mtof = (m) => 440 * 2 ** ((m - 69) / 12);
 
 export const SOUNDS = {
   bass: {
-    electric: { label: 'Finger bass', inst: 'fbass', ks: { bright: 0.42, pick: 0.16, decay: 0.997, lp: 1500, sub: 0.35, gain: 1.7, r: 0.07 }, waves: [{ type: 'sawtooth' }, { type: 'sine', gain: 0.8 }], cutoff: 260, cutEnv: 1300, q: 4, a: 0.004, d: 0.2, s: 0.55, r: 0.05, gain: 0.85 },
+    electric: { label: 'Finger bass', inst: 'finger', ks: { bright: 0.42, pick: 0.16, decay: 0.997, lp: 1500, sub: 0.35, gain: 1.7, r: 0.07 }, waves: [{ type: 'sawtooth' }, { type: 'sine', gain: 0.8 }], cutoff: 260, cutEnv: 1300, q: 4, a: 0.004, d: 0.2, s: 0.55, r: 0.05, gain: 0.85 },
+    slap: { label: 'Slap bass', inst: 'slap', ks: { bright: 0.42, pick: 0.16, decay: 0.997, lp: 1500, sub: 0.35, gain: 1.7, r: 0.07 }, waves: [{ type: 'sawtooth' }, { type: 'sine', gain: 0.8 }], cutoff: 260, cutEnv: 1300, q: 4, a: 0.004, d: 0.2, s: 0.55, r: 0.05, gain: 0.85 },
     synth: { label: 'Synth', waves: [{ type: 'square' }, { type: 'sawtooth', detune: 10 }], cutoff: 300, cutEnv: 2400, q: 9, a: 0.003, d: 0.14, s: 0.45, r: 0.04, gain: 0.6 },
     upright: { label: 'Upright', inst: 'upright', ks: { bright: 0.22, pick: 0.28, decay: 0.991, lp: 800, sub: 0.45, thump: 0.5, gain: 1.5, r: 0.12 }, waves: [{ type: 'triangle' }, { type: 'sine', gain: 0.7 }], cutoff: 700, cutEnv: 600, q: 1, a: 0.008, d: 0.35, s: 0.15, r: 0.1, gain: 1.1 },
     '808': { label: '808', waves: [{ type: 'sine' }], cutoff: 3000, q: 0.5, a: 0.002, d: 0.8, s: 0.75, r: 0.2, glide: 1.6, drive: true, gain: 0.5 },
@@ -60,7 +61,8 @@ const DRUM_SAMPLES = {
 // Sampled instruments (samples/inst/<name>/): level, release time, stereo position, and when to use
 // the short (staccato) takes instead of the ringing ones.
 const INST = {
-  fbass: { level: 3.0, r: 0.07, stacBelow: 0.2, tone: [700, 4500] },
+  finger: { level: 1.2, r: 0.08, stacBelow: 0.2, tone: [900, 5000] }, // regular fingerstyle electric bass
+  slap: { level: 3.0, r: 0.07, stacBelow: 0.2, tone: [700, 4500] },
   upright: { level: 1.65, r: 0.12, tone: [600, 3500] },
   guitar: { level: 1.6, r: 0.08, stacBelow: 0.22 },
   trumpet: { level: 0.75, r: 0.12, stacBelow: 0.18, pan: 0.15 },

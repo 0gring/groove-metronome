@@ -10,7 +10,8 @@ and works offline.
 |---|---|
 | Drum kit (kick, snare, cross-stick, hi-hat, ride, crash, toms) | [Virtuosity Drums](https://github.com/sfzinstruments/virtuosity_drums), close + room mics blended |
 | Percussion (tambourine, shaker, claves, cowbell, conga, claps) | [VCSL](https://github.com/sgossner/VCSL) |
-| Finger bass | Squier Jazz Bass — [Growlybass](https://github.com/sfzinstruments/karoryfer.growlybass) (sustained + staccato) |
+| Finger bass | 5-string fingerstyle bass — [Black And Blue Basses](https://github.com/sfzinstruments/karoryfer.black-and-blue-basses) “Dark Black” (sustained, staccato, ghost notes) |
+| Slap bass | Squier Jazz Bass played hard — [Growlybass](https://github.com/sfzinstruments/karoryfer.growlybass) (sustained + staccato) |
 | Upright bass | Double bass pizzicato + dead notes — [Meatbass](https://github.com/sfzinstruments/karoryfer.meatbass) |
 | Guitar | Gretsch hollow-body — [Black And Green Guitars](https://github.com/sfzinstruments/karoryfer.black-and-green-guitars) (ringing + short chops) |
 | E-piano, grand piano, tenor sax, vibes | [VCSL](https://github.com/sgossner/VCSL) |
@@ -125,30 +126,6 @@ yourself; loop, practice speed and the other tools all work.
 Tabs of copyrighted songs can't be bundled with the app, but **🔎 Find tabs online** searches Songsterr or Ultimate
 Guitar for any song; copy a text tab there and **📋 Paste tab** to practise it (it stays on your device).
 
-### Sheet-music PDFs → MusicXML (Audiveris)
-
-Printed notation can be converted into playable MusicXML with **[Audiveris](https://github.com/Audiveris/audiveris)**
-(free, open-source optical music recognition), running as a GitHub Action in this repository
-(`.github/workflows/omr.yml`). From the app: open a PDF in **My music** → **🎼 Convert to MusicXML**.
-The app uploads the PDF to `omr/inbox/`, the workflow converts it (a few minutes) into `omr/out/`, and the
-result appears in your library as a playable piece with the original PDF shown under it.
-
-One-time setup:
-
-1. Create a [fine-grained GitHub token](https://github.com/settings/personal-access-tokens/new) with access
-   to **only this repository** and the permission **Contents: Read and write**.
-2. In the app (*My music → Sheet music → MusicXML setup*) enter `owner/groove-metronome` and the token.
-   The token is kept only on your device and is sent only to `api.github.com`.
-
-**Privacy:** in a public repository, the PDFs you convert and the results are public too (including git history).
-The app asks you to confirm this once. To keep them private, copy `.github/` and `omr/` into a private repository
-and enter that one in the app instead.
-
-You can also drop a PDF/PNG/JPG into `omr/inbox/` on GitHub yourself; results land in `omr/out/`.
-Recognition is best on clean, computer-engraved scores and weaker on phone photos and handwriting, so check
-the result by ear. Bass-clef parts are assumed to be written bass (sounding an octave lower); change **Pitch** on
-the piece if needed.
-
 ## Get it on Android
 
 1. Merge to `main`, then in the GitHub repo go to **Settings → Pages → Build and deployment → Source: GitHub Actions**.
@@ -195,11 +172,8 @@ js/tuner.js           microphone pitch detection for the tuner
 js/practice.js        "My music" library, piece view, PDF viewer
 js/importers.js       ASCII tab + MusicXML/.mxl + Guitar Pro 7/8 parsers
 js/library.js         IndexedDB storage for imported files
-js/omr.js             GitHub upload/polling for sheet-music conversion
 js/songs.js           built-in public-domain song library (chords, melody, generated bass)
 js/pdfview.js         PDF rendering / text extraction (loads vendor/pdfjs on demand)
 vendor/pdfjs/         pdf.js 4.10.38 legacy build (Apache-2.0)
 sw.js, manifest.webmanifest, icons/   PWA / offline / install
-.github/workflows/omr.yml + .github/scripts/omr-convert.sh   Audiveris conversion
-omr/inbox, omr/out    conversion queue and results
 ```
