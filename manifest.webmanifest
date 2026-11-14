@@ -1,7 +1,7 @@
 {
   "name": "Groove Metronome",
   "short_name": "Groove",
-  "description": "Metronome with drum grooves, bass, chords and rhythmic melodies.",
+  "description": "Practise with a band, not a click: 49 drum grooves with bass, chords and melody, bass tab and fretboard, scale drills, tab import, tuner. Works offline.",
   "id": "./",
   "start_url": "./",
   "scope": "./",
@@ -9,11 +9,81 @@
   "orientation": "any",
   "background_color": "#16141f",
   "theme_color": "#16141f",
-  "categories": ["music", "education"],
+  "categories": [
+    "music",
+    "education",
+    "entertainment"
+  ],
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
-    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "lang": "en",
+  "dir": "ltr",
+  "screenshots": [
+    {
+      "src": "store/screenshots/1-grooves.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Groove picker and transport"
+    },
+    {
+      "src": "store/screenshots/2-bass.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Bass player with live tab and fretboard"
+    },
+    {
+      "src": "store/screenshots/3-drill.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Scale and arpeggio drills"
+    },
+    {
+      "src": "store/screenshots/4-paste.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Pasted tab with section loops"
+    },
+    {
+      "src": "store/screenshots/5-pattern.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Drum, bass and chord pattern grid"
+    },
+    {
+      "src": "store/screenshots/6-speed.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Practice speed and tools"
+    }
   ]
 }

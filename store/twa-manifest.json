@@ -1,0 +1,40 @@
+{
+  "packageId": "com.groovemetronome.app",
+  "host": "0gring.github.io",
+  "name": "Groove Metronome",
+  "launcherName": "Groove",
+  "display": "standalone",
+  "orientation": "default",
+  "themeColor": "#16141F",
+  "themeColorDark": "#16141F",
+  "navigationColor": "#16141F",
+  "navigationColorDark": "#16141F",
+  "navigationDividerColor": "#16141F",
+  "navigationDividerColorDark": "#16141F",
+  "backgroundColor": "#16141F",
+  "enableNotifications": false,
+  "startUrl": "/groove-metronome/",
+  "iconUrl": "https://0gring.github.io/groove-metronome/icons/icon-512.png",
+  "maskableIconUrl": "https://0gring.github.io/groove-metronome/icons/maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "android"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://0gring.github.io/groove-metronome/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://0gring.github.io/groove-metronome/",
+  "minSdkVersion": 21,
+  "fingerprints": []
+}

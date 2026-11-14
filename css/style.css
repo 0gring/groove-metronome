@@ -319,3 +319,4 @@ body.piece-mode .groove-only { display: none !important; }
 }
 .calib-pad.tapped { animation: calib-tap 0.18s ease-out; }
 @keyframes calib-tap { from { background: var(--accent-2); color: #111; } to { background: transparent; } }
+footer a { color: var(--accent-2); }
