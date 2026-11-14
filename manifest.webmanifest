@@ -1,7 +1,7 @@
 {
   "name": "Groove Metronome",
   "short_name": "Groove",
-  "description": "Practise with a band, not a click: 49 drum grooves with bass, chords and melody, bass tab and fretboard, scale drills, tab import, tuner. Works offline.",
+  "description": "Practise with a band, not a click: 49 drum grooves with bass, chords and melody, bass tab and fretboard, scale drills and a tuner. Works offline.",
   "id": "./",
   "start_url": "./",
   "scope": "./",
@@ -63,13 +63,6 @@
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Scale and arpeggio drills"
-    },
-    {
-      "src": "store/screenshots/4-paste.png",
-      "sizes": "1080x1920",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Pasted tab with section loops"
     },
     {
       "src": "store/screenshots/5-pattern.png",

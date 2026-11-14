@@ -92,109 +92,12 @@
       <p id="status" class="status" aria-live="polite"></p>
     </section>
 
-    <!-- My music: imported tabs / MusicXML / PDF -->
-    <section class="card" id="musicCard" aria-labelledby="musicLabel">
-      <h2 id="musicLabel">My music — tabs &amp; sheets</h2>
-      <div class="btn-row import-row">
-        <label class="file-btn" for="importFile">📂 Import file</label>
-        <input type="file" id="importFile" class="sr-only">
-        <button id="pasteBtn" class="secondary" aria-expanded="false" aria-controls="pasteBox">📋 Paste tab</button>
-      </div>
-      <p class="hint">Text tabs (.txt), Guitar Pro 7/8 (.gp), MusicXML (.musicxml / .mxl — export it from MuseScore, Sibelius…) or PDF.
-        Older .gp5 / .gpx files: open them in MuseScore (free) and export MusicXML.</p>
-      <div class="field-row song-row">
-        <label>📚 Song library (public-domain songs)
-          <select id="songSelect"><option value="">Choose a song to practise…</option></select>
-        </label>
-      </div>
-      <details class="find-tabs">
-        <summary>🔎 Find tabs online</summary>
-        <p class="hint">Search a tab site for any song, copy a text tab, then come back and tap <b>📋 Paste tab</b>.
-          Section labels like <b>[Verse]</b> or <b>Chorus:</b> become buttons to loop that part, chord names written above
-          the tab are played by the chords layer, and repeat marks (<b>x4</b>) are played out. Tabs you paste stay on this device.</p>
-        <div class="field-row">
-          <label>Song and artist
-            <input type="text" id="tabQuery" autocomplete="off" placeholder="e.g. My Girl Temptations bass">
-          </label>
-        </div>
-        <div class="btn-row">
-          <button id="searchSongsterr" class="secondary">Songsterr</button>
-          <button id="searchUG" class="secondary">Ultimate Guitar</button>
-        </div>
-      </details>
-      <div id="pasteBox" class="paste-box" hidden>
-        <input type="text" id="pasteName" placeholder="Name (e.g. song title)" aria-label="Name for the pasted tab">
-        <textarea id="pasteText" rows="8" spellcheck="false" aria-label="Tab text" placeholder="G|-----------------|&#10;D|---------5--7----|&#10;A|-5---7-----------|&#10;E|-----------------|"></textarea>
-        <button id="pasteSave">Add to library</button>
-      </div>
-      <p id="importMsg" class="import-msg" role="status"></p>
-      <ul id="libList" class="lib-list" aria-label="Library"></ul>
-
-      <div id="pieceView" class="piece-view" hidden>
-        <div class="piece-head">
-          <h3 id="pieceTitle"></h3>
-          <button id="closePiece" class="small">✕ Close</button>
-        </div>
-        <p id="pieceInfo" class="hint"></p>
-        <div id="pieceControls">
-          <div class="field-row">
-            <label id="songPartWrap">Your part
-              <select id="songPart">
-                <option value="bass">Bass line</option>
-                <option value="melody">Melody</option>
-              </select>
-            </label>
-            <label id="beatsWrap">Beats per bar
-              <select id="pieceBeats"></select>
-            </label>
-            <label id="partWrap">Part
-              <select id="piecePart"></select>
-            </label>
-            <label id="octWrap">Pitch
-              <select id="pieceOctave">
-                <option value="-12">Bass (sounds 8vb)</option>
-                <option value="0">As written</option>
-                <option value="12">Octave up</option>
-              </select>
-            </label>
-            <label>Loop from bar
-              <input type="number" id="loopFrom" min="1" inputmode="numeric">
-            </label>
-            <label>to bar
-              <input type="number" id="loopTo" min="1" inputmode="numeric">
-            </label>
-          </div>
-          <label class="check" id="songMuteWrap"><input type="checkbox" id="songMute"> Mute my part (I play it)</label>
-          <div id="sectionRow" class="section-row" hidden aria-label="Loop a section"></div>
-          <div class="btn-row">
-            <button id="loopAll" class="secondary">Loop whole piece</button>
-            <button id="fileTempo" class="secondary" hidden></button>
-          </div>
-          <p id="pieceBarInfo" class="fb-caption"></p>
-          <div class="tab-wrap"><div id="pieceTab" class="tab" role="img"></div></div>
-          <p class="hint">Shows the bar you're in and the next one, so you can read ahead. The fretboard below lights up each note.</p>
-        </div>
-        <div id="pdfView" class="pdf-view" hidden>
-          <div class="pdf-nav">
-            <button id="pdfPrev" class="icon-btn" aria-label="Previous page">‹</button>
-            <span id="pdfPage" aria-live="polite"></span>
-            <button id="pdfNext" class="icon-btn" aria-label="Next page">›</button>
-          </div>
-          <div class="pdf-wrap" id="pdfWrap"><canvas id="pdfCanvas" aria-label="PDF page"></canvas></div>
-          <div class="speed-auto">
-            <label class="check"><input type="checkbox" id="pdfAuto"> Turn page every</label>
-            <input type="number" id="pdfAutoBars" min="1" max="64" inputmode="numeric" aria-label="Bars per page">
-            <span>bars</span>
-          </div>
-        </div>
-      </div>
-    </section>
 
     <!-- Bass player tools -->
     <section class="card bass-card" aria-labelledby="bassLabel">
       <h2 id="bassLabel">Bass player</h2>
 
-      <div class="chord-now groove-only" aria-live="off">
+      <div class="chord-now" aria-live="off">
         <div><span class="lbl">Now</span><span id="chordNow" class="chord-big"></span></div>
         <div><span class="lbl">Next</span><span id="chordNext" class="chord-next"></span></div>
       </div>
@@ -215,7 +118,7 @@
           </select>
         </label>
       </div>
-      <div class="field-row groove-only">
+      <div class="field-row">
         <label>Bass line
           <select id="bassStyle">
             <option value="orig">Groove's own line</option>
@@ -244,29 +147,29 @@
           <select id="progSelect"></select>
         </label>
       </div>
-      <p id="bassFeelHint" class="hint groove-only" aria-live="polite"></p>
-      <div class="btn-row groove-only">
+      <p id="bassFeelHint" class="hint" aria-live="polite"></p>
+      <div class="btn-row">
         <button id="newBass">🎲 New bass line</button>
       </div>
 
-      <div class="tab-head groove-only">
+      <div class="tab-head">
         <h3>Tab</h3>
         <div class="seg" role="group" aria-label="Number of strings">
           <button id="str4" class="toggle small" aria-pressed="true">4-string</button>
           <button id="str5" class="toggle small" aria-pressed="false">5-string</button>
         </div>
       </div>
-      <div class="tab-wrap groove-only"><div id="tab" class="tab" role="img"></div></div>
-      <p class="hint groove-only"><span class="ap-key">Orange</span> = chromatic approach note leading into the next chord (→ in the grid). x = dead note.</p>
+      <div class="tab-wrap"><div id="tab" class="tab" role="img"></div></div>
+      <p class="hint"><span class="ap-key">Orange</span> = chromatic approach note leading into the next chord (→ in the grid). x = dead note.</p>
 
       <div class="tab-head">
         <h3>Fretboard</h3>
-        <div class="seg groove-only" role="group" aria-label="Fretboard labels">
+        <div class="seg" role="group" aria-label="Fretboard labels">
           <button id="lblIv" class="toggle small" aria-pressed="true">Intervals</button>
           <button id="lblNotes" class="toggle small" aria-pressed="false">Notes</button>
         </div>
       </div>
-      <div class="field-row fb-row groove-only">
+      <div class="field-row fb-row">
         <label>Show
           <select id="fbMode">
             <option value="chord">Chord tones</option>
@@ -277,7 +180,7 @@
       </div>
       <p id="fbCaption" class="fb-caption"></p>
       <div class="fb-wrap"><div id="fretboard" class="fretboard" role="img"></div></div>
-      <p class="hint groove-only"><span class="ap-key">Orange</span> = root, <span class="ct-key">teal</span> = chord tones, grey = scale. <span class="now-key">Yellow</span> = the note the bass is playing now.</p>
+      <p class="hint"><span class="ap-key">Orange</span> = root, <span class="ct-key">teal</span> = chord tones, grey = scale. <span class="now-key">Yellow</span> = the note the bass is playing now.</p>
 
       <details id="tunerBox">
         <summary>Tuner &amp; reference notes</summary>
@@ -301,7 +204,7 @@
       </div>
       <p class="hint">Tap a drum cell to change it: off → hit → accent → ghost.</p>
       <div class="grid-wrap"><div id="grid" class="grid"></div></div>
-      <p id="chordLine" class="chord-line groove-only"></p>
+      <p id="chordLine" class="chord-line"></p>
     </section>
 
     <!-- Mixer & sound -->

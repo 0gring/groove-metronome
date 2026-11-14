@@ -7,12 +7,12 @@ Copy each block into Play Console → **Grow users → Store presence → Main s
 Groove Metronome: Bass & Drums
 ```
 
-## Short description (max 80) — 77 chars
+## Short description (max 80) — 76 chars
 ```
-Practise with a band, not a click: 49 grooves, bass tab, drills & tab import.
+Practise with a band, not a click: 49 grooves, bass tab, drills and a tuner.
 ```
 
-## Full description (max 4000) — 2090 chars
+## Full description (max 4000) — 1680 chars
 ```
 Groove Metronome is the metronome that plays like a band. Instead of a lonely click you get real recorded drums, a bass line that follows the chords, guitar or keys comping and a rhythmic melody — in 49 styles, each with five variations.
 
@@ -30,12 +30,6 @@ Funk, disco, neo-soul, Motown, rock, pop, metal, punk, 60s British Invasion to 9
 • Swap the chord changes: vamp, I–IV–V, ii–V–I, minor, 12-bar blues, circle of 4ths
 • Mic tuner down to low B, plus steady reference notes
 
-🎼 PRACTISE YOUR OWN SONGS
-• Paste a text tab: [Verse] / [Chorus] labels become loop buttons, chord names play along, x4 repeats are played out
-• Import Guitar Pro 7/8 (.gp), MusicXML (.musicxml, .mxl) and PDF files
-• Loop any bars, see the bar you're in and the next one, and play along with a backing groove
-• Song library of public-domain songs with bass, melody and chords
-
 ⏱ PRACTICE TOOLS
 • Practice speed (50–100%) with automatic step-up
 • Tempo trainer that speeds up gradually
@@ -43,7 +37,7 @@ Funk, disco, neo-soul, Motown, rock, pop, metal, punk, 60s British Invasion to 9
 • Count-in, tap tempo, swing and humanize, screen flash and vibration on the beat
 • Bluetooth headphones delay setting, so the visuals stay in sync
 
-✅ No ads, no account, no tracking. Works offline. Your music stays on your device.
+✅ No ads, no account, no tracking. Works offline.
 ```
 
 ## Graphics (all in this folder)
@@ -51,7 +45,7 @@ Funk, disco, neo-soul, Motown, rock, pop, metal, punk, 60s British Invasion to 9
 |---|---|---|
 | App icon | `icon-512.png` | 512 × 512 PNG |
 | Feature graphic | `feature-graphic.png` | 1024 × 500 PNG/JPEG, no transparency |
-| Phone screenshots | `screenshots/1-grooves.png` … `6-speed.png` | 2–8 screenshots, 9:16, 1080 × 1920 |
+| Phone screenshots | `screenshots/` (5 files) | 2–8 screenshots, 9:16, 1080 × 1920 |
 | Promo video (optional) | `../promo/groove-metronome-promo.mp4` | Play takes a **YouTube link** — upload the video to YouTube first |
 
 ## Categorisation

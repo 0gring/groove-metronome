@@ -1,8 +1,7 @@
 // Offline support: cache the app shell, serve from cache, refresh in the background.
-const CACHE = 'groove-metronome-v23';
+const CACHE = 'groove-metronome-v24';
 const ASSETS = [
-  './', 'index.html', 'css/style.css', 'js/app.js', 'js/audio.js', 'js/grooves.js', 'js/theory.js', 'js/tuner.js', 'js/practice.js', 'js/importers.js', 'js/library.js', 'js/pdfview.js', 'js/songs.js',
-  'vendor/pdfjs/pdf.min.mjs', 'vendor/pdfjs/pdf.worker.min.mjs',
+  './', 'index.html', 'css/style.css', 'js/app.js', 'js/audio.js', 'js/grooves.js', 'js/theory.js', 'js/tuner.js',
   'samples/manifest.json', 'samples/drums/clap-1.flac', 'samples/drums/clap-2.flac', 'samples/drums/clave.flac',
   'samples/drums/conga.flac', 'samples/drums/cowbell.flac', 'samples/drums/crash.flac', 'samples/drums/hhc-1.flac',
   'samples/drums/hhc-2.flac', 'samples/drums/hhc-hard.flac', 'samples/drums/hhc-soft.flac', 'samples/drums/hho.flac',

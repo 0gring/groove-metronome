@@ -99,33 +99,6 @@ Every groove has a main pattern (A) and four variations (B–E), e.g. Rock *Push
   a steady tone (tap again to stop) built from the string's harmonics, so it's audible and in tune even on a
   phone speaker that can't play the 31–41 Hz fundamentals of the low strings.
 
-## Practise your own music
-
-Import files into **My music** (they're saved on your device and reopen next time):
-
-| File | What you get |
-|---|---|
-| Text tab (`.txt`, or paste it in) | Playable. Rhythm is read from the spacing between bar lines (quantized to 16ths). Detects 4/5/6-string bass, guitar, drop/flat tunings. Reads Ultimate-Guitar-style extras: section labels (`[Verse]`, `Chorus:`, `Intro`) become buttons that loop that part, chord names written above the tab are played by the chords layer and shown bar by bar, and repeat marks (`x4`, `(x2)`, `repeat 3 times`) on a block or a section are played out. |
-| Guitar Pro 7/8 (`.gp`) | Playable with exact rhythm. Picks the bass track automatically (switchable), keeps string/fret fingerings, tuning, capo, ties, dead notes, triplets, file tempo, repeats and alternate endings, section markers (loop buttons) and chord names. Older `.gp5`/`.gp4`/`.gpx`: open in MuseScore (free) or TuxGuitar and export MusicXML. |
-| MusicXML (`.musicxml`, `.xml`, `.mxl`) | Playable with exact rhythm. Export from MuseScore, Sibelius, Finale… Picks the bass part automatically (switchable), keeps tab fingerings, file tempo, ties and pickup bars. |
-| PDF | Shown page by page next to the metronome, with page-turn buttons, tap-to-turn and auto page-turn every N bars. If the PDF contains tab as text, it's also playable. |
-
-While practising a piece you get a tab of the current bar **and the next one** (read ahead), the note lit up on
-the fretboard, a **loop from bar X to bar Y**, and everything else still works: practice speed, silent
-"you play" mode, call & response, gap trainer, count-in. The selected groove's drums play along when its
-meter matches the piece; otherwise you get the click.
-
-### Song library
-
-Built-in **public-domain** songs, arranged for practice with chords, melody and a bass line in the style of the
-song: When the Saints Go Marching In, Amazing Grace, Ode to Joy, Auld Lang Syne, Greensleeves, House of the Rising
-Sun (traditional), Drunken Sailor and a 12-bar blues. Pick **your part** (bass line or melody): it shows as tab and
-on the fretboard while the app plays the other part, the chords and the drums. **Mute my part** lets you play it
-yourself; loop, practice speed and the other tools all work.
-
-Tabs of copyrighted songs can't be bundled with the app, but **🔎 Find tabs online** searches Songsterr or Ultimate
-Guitar for any song; copy a text tab there and **📋 Paste tab** to practise it (it stays on your device).
-
 ## Get it on Android
 
 1. Merge to `main`, then in the GitHub repo go to **Settings → Pages → Build and deployment → Source: GitHub Actions**.
@@ -144,10 +117,8 @@ Any static file server works (ES modules need http, not `file://`):
 python3 -m http.server 8000   # then open http://localhost:8000
 node tests/grooves.test.mjs   # validate groove data & theory helpers
 node tests/tuner.test.mjs     # pitch detector accuracy on synthetic bass notes
-node tests/importers.test.mjs # ASCII tab parser (sections, chords, repeats) and .mxl unzip (sample files in tests/fixtures/)
 node tests/audio.test.mjs     # plucked-string bass/guitar tuning
 node tests/voicings.test.mjs  # guitar shapes and keyboard voice leading
-node tests/songs.test.mjs     # song library: bars add up, parts in range
 ```
 
 ## Adding a groove
@@ -169,11 +140,5 @@ samples/inst/         CC0 recordings: finger & upright bass, guitar, trumpet, fl
 js/grooves.js         groove library
 js/theory.js          pattern parsers, chord theory, melody & bass line generators
 js/tuner.js           microphone pitch detection for the tuner
-js/practice.js        "My music" library, piece view, PDF viewer
-js/importers.js       ASCII tab + MusicXML/.mxl + Guitar Pro 7/8 parsers
-js/library.js         IndexedDB storage for imported files
-js/songs.js           built-in public-domain song library (chords, melody, generated bass)
-js/pdfview.js         PDF rendering / text extraction (loads vendor/pdfjs on demand)
-vendor/pdfjs/         pdf.js 4.10.38 legacy build (Apache-2.0)
 sw.js, manifest.webmanifest, icons/   PWA / offline / install
 ```

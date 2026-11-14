@@ -5,7 +5,6 @@ import {
   generateDrill, isDrill, chordScale, DRILLS,
 } from './theory.js';
 import { Tuner } from './tuner.js';
-import { initPractice } from './practice.js';
 
 const $ = (id) => document.getElementById(id);
 const audio = new AudioEngine();
@@ -112,7 +111,6 @@ function feelDiv(def) {
 }
 
 function gridFactor(def) {
-  if (piece) return 1;
   const need = feelDiv(def);
   const sub = def.basic ? state.basicSub : def.sub;
   return need && sub !== 3 && sub < need ? need / sub : 1;
@@ -149,43 +147,7 @@ function buildGroove(def) {
   g.comp = def.chords ? parseComp(expandLine(def.chords, k)) : null;
   g.melody = def.melody ? parseLine(expandLine(def.melody, k)) : g.basic ? null : parseLine(generateMelody(g));
   g.prog = makeProg(def);
-  if (piece) adaptForPiece(g);
   return g;
-}
-
-// Active imported piece (tab / MusicXML) being practised, and its loop range (0-based bars).
-let piece = null;
-const loop = { start: 0, end: 0 };
-const pieceBarOf = (bar) => loop.start + mod(bar, loop.end - loop.start + 1);
-
-/** In piece mode the groove only supplies drums/click; the piece supplies the notes. */
-function adaptForPiece(g) {
-  const def = g.def;
-  if (!def.basic && def.beats === piece.beats) {
-    g.backing = true;
-  } else if (!def.basic) {
-    g.drumStr = {};
-    g.drums = {};
-    g.sets = [{ drumStr: g.drumStr, drums: g.drums }];
-    g.sub = piece.beatType >= 8 ? 2 : 4;
-    g.accentBeats = piece.beats === 6 && piece.beatType === 8 ? [0, 3] : [0];
-  }
-  g.beats = piece.beats;
-  g.spb = g.beats * g.sub;
-  g.piece = true;
-  g.bass = null;
-  // songs: the chords are comped in the groove's own rhythm (when the meter matches)
-  g.comp = piece.song && g.backing && def.chords ? parseComp(def.chords) : null;
-  g.melody = null;
-  g.prog = parseProg(['0:']);
-}
-
-/** The song chord sounding at a bar/beat, as a chord relative to the key (for the voicing code). */
-function songChordAt(pb, beat) {
-  let c = null;
-  for (const x of piece.chordsByBar?.[pb] ?? []) if (x.beat <= beat + 1e-6) c = x;
-  c ??= piece.chordsByBar?.[pb]?.[0];
-  return c ? { root: mod(c.pc - state.key, 12), q: c.q } : null;
 }
 
 function makeBass(g) {
@@ -306,12 +268,6 @@ function scheduleStep(bar, s, t) {
     const barsPerPat = g.bass.length / g.spb;
     ev.bassStart = bar - (bar % barsPerPat);
   }
-  if (g.piece && piece) {
-    ev.pieceBar = pieceBarOf(bar);
-    ev.pieceBeat = s / g.sub;
-    const sounding = (piece.byBar[ev.pieceBar] ?? []).filter((n) => !n.dead && n.beat <= ev.pieceBeat + 1e-6 && n.beat + n.dur > ev.pieceBeat + 1e-6);
-    ev.pieceNote = sounding.length ? sounding[sounding.length - 1] : null;
-  }
   visQ.push(ev);
   if (ev.muted) return;
 
@@ -332,7 +288,7 @@ function scheduleStep(bar, s, t) {
       ? g.sets[1 + (Math.floor(bar / 4) % (g.sets.length - 1))].drums
       : g.drums;
     // Fills: last beat (or two, every 8 bars) of the phrase; crash on the next downbeat
-    const fillsOn = state.fills && !g.basic && !g.piece && state.drumMode === 'full';
+    const fillsOn = state.fills && !g.basic && state.drumMode === 'full';
     const fillLen = state.fills === 8 ? Math.min(2, g.beats) * g.sub : g.sub;
     const inFill = fillsOn && (bar + 1) % state.fills === 0 && s >= g.spb - fillLen;
     if (inFill) {
@@ -352,41 +308,12 @@ function scheduleStep(bar, s, t) {
     }
   }
 
-  const chord = (g.piece && piece?.chordsByBar && songChordAt(pieceBarOf(bar), s / g.sub)) || g.prog[bar % g.prog.length];
+  const chord = g.prog[bar % g.prog.length];
   const pc = mod(state.key + chord.root, 12);
 
   if (L.bass.on && g.bass && !ev.yourTurn) {
     const e = g.bass.events[abs % g.bass.length];
     if (e) audio.bass(at(tt), bassNoteMidi(e.note, bar), e.len * sd * 0.92, vj(0.85), soundFor('bass'), e.note.dead);
-  }
-
-  if (g.piece && piece) {
-    const pb = pieceBarOf(bar);
-    const from = s / g.sub;
-    const to = (s + 1) / g.sub;
-    const beatSec = 60 / playBpm();
-    const playPart = (layer, list) => {
-      for (const n of list ?? []) {
-        if (n.beat < from - 1e-6 || n.beat >= to - 1e-6) continue;
-        const nt = at(t + (n.beat - from) * beatSec);
-        const dur = n.dur * beatSec * 0.92;
-        if (layer === 'bass') audio.bass(nt, n.midi, dur, vj(0.85), soundFor('bass'), n.dead);
-        else if (!n.dead) audio.melody(nt, n.midi, dur, vj(0.8), soundFor('melody'));
-      }
-    };
-    // your part (unless you're playing it yourself)
-    if (L[piece.layer].on && !ev.yourTurn && !piece.focusMuted) playPart(piece.layer, piece.byBar[pb]);
-    // songs: the rest of the band
-    for (const part of piece.accomp ?? []) if (L[part.layer].on) playPart(part.layer, part.byBar[pb]);
-    if (piece.chordsByBar && !g.comp && L.chords.on) {
-      // no matching groove rhythm: play each chord where it changes
-      for (const c of piece.chordsByBar[pb] ?? []) {
-        if (c.beat < from - 1e-6 || c.beat >= to - 1e-6) continue;
-        const notes = keysVoicing(c.pc, c.q, lastVoicing);
-        lastVoicing = notes;
-        audio.chord(at(t + (c.beat - from) * beatSec), notes, c.dur * beatSec * 0.95, vj(0.7), soundFor('chords'));
-      }
-    }
   }
 
   if (L.chords.on && g.comp) {
@@ -453,7 +380,6 @@ function stop() {
   highlightTab(-1);
   lastChordBar = null;
   showChordNow(0);
-  practice.onStop();
   updatePlayUI();
   releaseWake();
   setStatus('');
@@ -478,17 +404,12 @@ function frame() {
   while (visQ.length && visQ[0].t <= now) {
     last = visQ.shift();
     if (last.onBeat) beatFx(last);
-    if (last.s === 0 && !last.countIn) practice.onBar(last.bar);
   }
   if (!last) return;
   highlightCol(last.gen === gridGen && !last.countIn ? last.col : -1);
   if (!last.countIn) {
     highlightChord(last.chordIdx);
     showChordNow(last.bar);
-    if (last.pieceBar !== undefined && piece) {
-      practice.onStep(last);
-      lightFret(fretPosFor(last.pieceNote));
-    }
     if (cur.bass && last.bassPos !== undefined && last.gen === gridGen) {
       if (last.bassStart !== tabStart || tabGen !== gridGen) renderTab(last.bassStart);
       highlightTab(last.bassPos);
@@ -613,10 +534,6 @@ function renderBassPanel() {
 function showChordNow(bar) {
   if (bar === lastChordBar) return;
   lastChordBar = bar;
-  if (piece) {
-    renderPieceFretboard(pieceBarOf(bar));
-    return;
-  }
   const p = cur.prog;
   $('chordNow').textContent = chordName(p[mod(bar, p.length)]);
   $('chordNext').textContent = p.length > 1 ? chordName(p[mod(bar + 1, p.length)]) : '—';
@@ -698,33 +615,6 @@ function drawFretboard(dotFor) {
   div('fmark');
   for (let f = 0; f <= FRETS; f++) div('fmark', [3, 5, 7, 9].includes(f) ? '•' : f === 12 ? '••' : '');
   $('fretboard').replaceChildren(frag);
-}
-
-/** Where a piece note sits on the displayed fretboard (uses the file's fingering when tunings match). */
-function fretPosFor(n) {
-  if (!n || !piece) return null;
-  const { open } = STRINGS[state.strings];
-  const same = piece.tuning.length === open.length && piece.tuning.every((m, i) => m === open[i]);
-  if (same && n.si !== null && n.si !== undefined && n.f !== null && n.f <= FRETS) return { si: n.si, f: n.f };
-  let best = null;
-  open.forEach((o, si) => {
-    const f = n.midi - o;
-    if (f >= 0 && f <= FRETS && (!best || f < best.f)) best = { si, f };
-  });
-  return best;
-}
-
-function renderPieceFretboard(pb) {
-  const notes = (piece.byBar[pb] ?? []).filter((n) => !n.dead);
-  const pos = new Set(notes.map(fretPosFor).filter(Boolean).map((p) => `${p.si}:${p.f}`));
-  drawFretboard((si, f, pc) => [pos.has(`${si}:${f}`) ? 'ct' : '', KEYS[pc]]);
-  const cap = $('fbCaption');
-  cap.replaceChildren(`Bar ${pb + 1} `);
-  const sp = document.createElement('span');
-  sp.textContent = '— notes in this bar';
-  cap.append(sp);
-  const names = [...new Set(notes.map((n) => KEYS[mod(n.midi, 12)]))];
-  $('fretboard').setAttribute('aria-label', `Fretboard, bar ${pb + 1}: ${names.join(', ') || 'rest'}`);
 }
 
 function lightFret(pos) {
@@ -1191,7 +1081,7 @@ function selectGroove(id) {
   const def = grooveDef(id);
   state.swing = null;
   state.variation = '0';
-  if (!piece) setBpm(def.bpm);
+  setBpm(def.bpm);
   rebuild();
 }
 
@@ -1612,45 +1502,5 @@ function init() {
   setSpeed(state.speed);
   renderGroove();
 }
-
-const practice = initPractice({
-  isPlaying: () => sched.playing,
-  setBpm,
-  /** Activate (or clear, with null) an imported piece; restarts playback from the loop start. */
-  setPiece(p, from = 0, to = null) {
-    const wasPlaying = sched.playing;
-    if (wasPlaying) stop();
-    piece = p;
-    if (p) {
-      p.byBar = Array.from({ length: p.bars }, () => []);
-      for (const n of p.notes) p.byBar[n.bar]?.push(n);
-      const sorted = p.notes.map((n) => n.midi).sort((a, b) => a - b);
-      p.layer = p.forceLayer ?? (sorted[Math.floor(sorted.length / 2)] < 55 ? 'bass' : 'melody');
-      loop.start = Math.max(0, Math.min(from, p.bars - 1));
-      loop.end = Math.max(loop.start, Math.min(to ?? p.bars - 1, p.bars - 1));
-    }
-    document.body.classList.toggle('piece-mode', !!p);
-    cur = buildGroove(grooveDef(state.grooveId));
-    renderGroove();
-    lastChordBar = null;
-    showChordNow(0);
-    if (wasPlaying) start();
-  },
-  /** Songs: switch to the song's groove (keeps the current tempo; the song sets it). */
-  useGroove(id) {
-    if (state.grooveId === id) return;
-    state.grooveId = id;
-    state.variation = '0';
-    state.swing = null;
-  },
-  strings: () => state.strings,
-  setLoop(from, to) {
-    loop.start = from;
-    loop.end = to;
-    lastChordBar = null;
-    showChordNow(0);
-  },
-  backingInfo: () => (!cur.piece ? '' : cur.def.basic ? 'Click' : cur.backing ? `${cur.def.name} drums` : `Click — “${cur.def.name}” is in a different meter`),
-});
 
 init();
