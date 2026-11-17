@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EPUB to PDF</title>
+  <meta name="description" content="Convert EPUB books to high-quality vector PDFs, with inverted colours and reflowing text zoom. Runs entirely in your browser.">
+  <link rel="stylesheet" href="style.css">
+  <script src="vendor/jszip.min.js" defer></script>
+  <script src="epub.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <h1>EPUB <span aria-hidden="true">→</span> PDF</h1>
+    <p class="book-title" id="bookTitle">No book open</p>
+    <label class="btn primary" for="file">Open EPUB…</label>
+    <input type="file" id="file" accept=".epub,application/epub+zip" hidden>
+  </header>
+
+  <main class="layout">
+    <aside class="panel" aria-label="Settings">
+      <section>
+        <h2>Text zoom</h2>
+        <div class="zoom-row">
+          <button class="btn icon" id="zoomOut" aria-label="Smaller text">A−</button>
+          <input type="range" id="zoom" min="50" max="400" step="5" value="100" aria-label="Text zoom">
+          <button class="btn icon" id="zoomIn" aria-label="Bigger text">A+</button>
+        </div>
+        <p class="value"><output id="zoomVal">100%</output> · <span id="pageCount">–</span> pages</p>
+        <p class="hint">The text reflows: zoom in and the lines re-wrap to fit the page, so the book spreads over more pages. Also: <kbd>Ctrl</kbd>+scroll or pinch on the page, <kbd>+</kbd>/<kbd>−</kbd> keys.</p>
+      </section>
+
+      <section>
+        <h2>Colours</h2>
+        <div class="themes" role="radiogroup" aria-label="Colour theme">
+          <label><input type="radio" name="theme" value="original" checked><span class="sw sw-original">Aa</span>Original</label>
+          <label><input type="radio" name="theme" value="invert"><span class="sw sw-invert">Aa</span>Inverted</label>
+          <label><input type="radio" name="theme" value="dark"><span class="sw sw-dark">Aa</span>Dark grey</label>
+          <label><input type="radio" name="theme" value="sepia"><span class="sw sw-sepia">Aa</span>Sepia</label>
+          <label><input type="radio" name="theme" value="custom"><span class="sw sw-custom" id="customSwatch">Aa</span>Custom</label>
+        </div>
+        <div class="custom-colors" id="customColors" hidden>
+          <label>Text <input type="color" id="fg" value="#ffffff"></label>
+          <label>Background <input type="color" id="bg" value="#000000"></label>
+        </div>
+        <label class="check"><input type="checkbox" id="invertImages"> Invert pictures too</label>
+      </section>
+
+      <section>
+        <h2>Page</h2>
+        <label class="field">Size
+          <select id="page"></select>
+        </label>
+        <div class="custom-size" id="customSize" hidden>
+          <label>W <input type="number" id="pageW" min="40" max="1000" value="148"> mm</label>
+          <label>H <input type="number" id="pageH" min="40" max="1000" value="210"> mm</label>
+        </div>
+        <label class="field">Margins <output id="marginVal">14 mm</output>
+          <input type="range" id="margin" min="0" max="40" step="1" value="14">
+        </label>
+        <label class="check"><input type="checkbox" id="chapterBreaks" checked> Start chapters on a new page</label>
+      </section>
+
+      <section>
+        <h2>Typography</h2>
+        <label class="field">Font
+          <select id="font">
+            <option value="book">The book's fonts</option>
+            <option value="serif">Serif</option>
+            <option value="sans">Sans-serif</option>
+            <option value="readable">Extra readable</option>
+            <option value="mono">Monospace</option>
+          </select>
+        </label>
+        <label class="field">Line spacing
+          <select id="lineHeight">
+            <option value="0">The book's</option>
+            <option value="1.2">Tight (1.2)</option>
+            <option value="1.45">Normal (1.45)</option>
+            <option value="1.7">Relaxed (1.7)</option>
+            <option value="2">Double (2.0)</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="justify"> Justify paragraphs</label>
+        <label class="check"><input type="checkbox" id="bookStyles" checked> Use the book's styles</label>
+      </section>
+
+      <section class="export">
+        <button class="btn primary big" id="save" disabled>Save as PDF</button>
+        <p class="hint">In the print window choose <b>Save as PDF</b> as the destination. Keep “Background graphics” on (for inverted colours) and margins on “Default”. The PDF keeps real vector text: it stays perfectly sharp at any zoom and you can search and copy it.</p>
+      </section>
+    </aside>
+
+    <section class="viewer" id="viewer" aria-label="Preview">
+      <div class="dropzone" id="dropzone">
+        <div>
+          <p class="big-icon" aria-hidden="true">📖</p>
+          <p><b>Drop an EPUB here</b> or use <b>Open EPUB…</b></p>
+          <p class="hint">Your book never leaves your device — everything runs in this browser tab.</p>
+        </div>
+      </div>
+      <div class="stage" id="stage" hidden>
+        <div class="sheet" id="sheet"><iframe id="frame" title="Book preview" sandbox="allow-same-origin"></iframe></div>
+      </div>
+      <nav class="pager" id="pager" hidden>
+        <button class="btn icon" id="prev" aria-label="Previous page">‹</button>
+        <label class="goto">Page <input type="number" id="pageNum" min="1" value="1"> / <span id="pageTotal">1</span></label>
+        <button class="btn icon" id="next" aria-label="Next page">›</button>
+        <select id="toc" aria-label="Go to chapter"><option value="">Chapters…</option></select>
+        <span class="view-scale">
+          <button class="btn icon small" id="viewOut" aria-label="Zoom out the view">−</button>
+          <button class="btn small" id="viewFit" title="Fit page to window">Fit</button>
+          <button class="btn icon small" id="viewIn" aria-label="Magnify the view">+</button>
+        </span>
+      </nav>
+      <div class="status" id="status" role="status" hidden></div>
+    </section>
+  </main>
+</body>
+</html>
